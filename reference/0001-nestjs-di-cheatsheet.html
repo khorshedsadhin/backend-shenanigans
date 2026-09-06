@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · NestJS DI &amp; Modules</title>
+<link rel="stylesheet" href="../assets/course.css">
+<style>
+  /* Reference sheets are denser than lessons: full width, tighter rhythm. */
+  .sheet > * { max-width: 100%; }
+  body { padding-top: 2.5rem; }
+  h2 { margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; margin: 0 0 1.4rem; }
+  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: ui-monospace, Consolas, monospace; font-size: .7rem; letter-spacing: .1em;
+       text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
+  td code { white-space: nowrap; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
+  .err { font-size: .8rem; }
+</style>
+</head>
+<body>
+<main class="sheet">
+
+<header class="masthead">
+  <p class="eyebrow">Reference 01 · Companion to <a href="../lessons/0001-the-di-container.html">Lesson 01</a></p>
+  <h1>NestJS DI &amp; Modules</h1>
+  <p class="standfirst">The wiring rules, the decorators, and the error messages — on one page.</p>
+</header>
+
+<h2>The four module arrays</h2>
+
+<table>
+  <thead><tr><th>Array</th><th>Answers</th><th>Gotcha</th></tr></thead>
+  <tbody>
+    <tr><td><code>imports</code></td>
+        <td>Which other <em>modules</em> do I need?</td>
+        <td>Takes modules, never providers.</td></tr>
+    <tr><td><code>controllers</code></td>
+        <td>Which classes handle HTTP here?</td>
+        <td>Controllers are never put in <code>providers</code>, and are never exported.</td></tr>
+    <tr><td><code>providers</code></td>
+        <td>What do I own and inject internally?</td>
+        <td>Registration happens here — <code>@Injectable()</code> alone does nothing.</td></tr>
+    <tr><td><code>exports</code></td>
+        <td>What do I lend to modules that import me?</td>
+        <td>Must also appear in <code>providers</code>. Omitting this is the #1 cross-module bug.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="label">The one rule</span>
+  <p>A provider is <strong>private to its module</strong> unless exported. Sharing needs
+  <em>both</em> halves: the owner <code>exports</code> it, the consumer <code>imports</code>
+  the owning module.</p>
+</div>
+
+<h2>Canonical shapes</h2>
+
+<div class="grid2">
+<div>
+<h3>Service (provider)</h3>
+<pre><code><span class="k">import</span> { Injectable } <span class="k">from</span> <span class="s">'@nestjs/common'</span>;
+
+<span class="d">@Injectable</span>()
+<span class="k">export class</span> <span class="t">UsersService</span> {
+  constructor(
+    <span class="k">private readonly</span> db: <span class="t">Database</span>,
+  ) {}
+
+  findAll() { <span class="k">return</span> []; }
+}</code></pre>
+</div>
+<div>
+<h3>Controller</h3>
+<pre><code><span class="k">import</span> { Controller, Get, Param }
+  <span class="k">from</span> <span class="s">'@nestjs/common'</span>;
+
+<span class="d">@Controller</span>(<span class="s">'users'</span>)
+<span class="k">export class</span> <span class="t">UsersController</span> {
+  constructor(
+    <span class="k">private readonly</span> svc: <span class="t">UsersService</span>,
+  ) {}
+
+  <span class="d">@Get</span>()
+  findAll() { <span class="k">return this</span>.svc.findAll(); }
+
+  <span class="d">@Get</span>(<span class="s">':id'</span>)
+  one(<span class="d">@Param</span>(<span class="s">'id'</span>) id: <span class="t">string</span>) { <span class="k">return</span> id; }
+}</code></pre>
+</div>
+</div>
+
+<div class="grid2">
+<div>
+<h3>Module that keeps a service private</h3>
+<pre><code><span class="d">@Module</span>({
+  controllers: [<span class="t">UsersController</span>],
+  providers:   [<span class="t">UsersService</span>],
+})
+<span class="k">export class</span> <span class="t">UsersModule</span> {}</code></pre>
+</div>
+<div>
+<h3>Module that shares it</h3>
+<pre><code><span class="d">@Module</span>({
+  controllers: [<span class="t">UsersController</span>],
+  providers:   [<span class="t">UsersService</span>],
+  exports:     [<span class="t">UsersService</span>],   <span class="c">// lend</span>
+})
+<span class="k">export class</span> <span class="t">UsersModule</span> {}
+
+<span class="d">@Module</span>({
+  imports:   [<span class="t">UsersModule</span>],      <span class="c">// borrow</span>
+  providers: [<span class="t">OrdersService</span>],
+})
+<span class="k">export class</span> <span class="t">OrdersModule</span> {}</code></pre>
+</div>
+</div>
+
+<h2>Injection scopes</h2>
+
+<table>
+  <thead><tr><th>Scope</th><th>Instances</th><th>Use when</th></tr></thead>
+  <tbody>
+    <tr><td><code>DEFAULT</code></td>
+        <td>One, shared app-wide, for the app's whole lifetime.</td>
+        <td><strong>Almost always.</strong> Requires stateless services. The default; do not declare it.</td></tr>
+    <tr><td><code>REQUEST</code></td>
+        <td>One per incoming request, then garbage-collected.</td>
+        <td>You genuinely need per-request state in the provider (e.g. multi-tenant context). Costs latency, and the scope <em>bubbles up</em> to every consumer.</td></tr>
+    <tr><td><code>TRANSIENT</code></td>
+        <td>A fresh, dedicated instance per consumer.</td>
+        <td>Rare. Typically loggers that must know who injected them.</td></tr>
+  </tbody>
+</table>
+
+<pre><code><span class="d">@Injectable</span>({ scope: <span class="t">Scope</span>.REQUEST })
+<span class="k">export class</span> <span class="t">TenantContext</span> {}</code></pre>
+
+<p><a href="https://docs.nestjs.com/fundamentals/injection-scopes">Docs → Injection Scopes</a>.
+Default scope is a singleton, so <strong>never store per-request state on a provider field.</strong></p>
+
+<h2>Error decoder</h2>
+
+<table class="err">
+  <thead><tr><th>Message</th><th>It means</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>Nest can't resolve dependencies of the X (?). ... argument Y at index [0] is available in the Z context</code></td>
+      <td>Nest built <code>X</code>, needed a <code>Y</code>, and could not find one registered in module <code>Z</code>.</td>
+      <td>Add <code>Y</code> to <code>Z</code>'s <code>providers</code> — or, if <code>Y</code> belongs to another module, <code>export</code> it there and <code>import</code> that module into <code>Z</code>.</td>
+    </tr>
+    <tr>
+      <td><code>... argument at index [0] is available in the ... context</code> but the argument name shows as <code>Object</code> or <code>undefined</code></td>
+      <td>The type metadata was never emitted, usually a circular import between two files.</td>
+      <td>Break the cycle, or use <code>forwardRef(() =&gt; OtherModule)</code> on both sides as a last resort.</td>
+    </tr>
+    <tr>
+      <td>Boots fine, but a shared cache or counter behaves oddly.</td>
+      <td>The provider was listed in two modules' <code>providers</code>, so two instances exist.</td>
+      <td>Declare it in exactly one module, <code>export</code> it, and <code>import</code> that module everywhere else.</td>
+    </tr>
+    <tr>
+      <td>One user sees another user's data, only under load.</td>
+      <td>Per-request state stored on a singleton provider's field.</td>
+      <td>Move the state out: pass it as a method argument, or persist it in the database or cache.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>CLI, worth memorising</h2>
+
+<pre><code>nest new &lt;app&gt;                <span class="c"># scaffold a project</span>
+nest g module users           <span class="c"># module (auto-imported into AppModule)</span>
+nest g controller users       <span class="c"># controller (auto-registered in UsersModule)</span>
+nest g service users          <span class="c"># provider  (auto-registered in UsersModule)</span>
+nest g resource users         <span class="c"># all of the above + CRUD + DTOs</span>
+npm run start:dev             <span class="c"># watch mode</span></code></pre>
+
+<div class="callout mission">
+  <span class="label">Carry this forward</span>
+  <p><strong>Singleton by default ⇒ services must be stateless ⇒ you can run N copies behind a
+  load balancer.</strong> That chain is the reason this reference sheet sits at the front of a
+  course about scale. See <a href="../MISSION.md">MISSION.md</a>.</p>
+</div>
+
+<nav class="footnav">
+  <ul>
+    <li>Lesson · <a href="../lessons/0001-the-di-container.html">01 · The Container</a></li>
+    <li>Source · <a href="https://docs.nestjs.com/providers">docs.nestjs.com/providers</a></li>
+    <li>Resources · <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  </ul>
+</nav>
+
+</main>
+</body>
+</html>
