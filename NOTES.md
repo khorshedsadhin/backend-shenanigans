@@ -14,6 +14,23 @@
   he's going. Keep a visible roadmap; each lesson should say where it sits on it.
 - Warned against overestimating him. Bias toward smaller steps and more retrieval practice.
 
+## Working agreement (2026-09-11)
+He wants to be able to build real projects **without** AI, so that using AI multiplies his
+output instead of replacing his skill. Help is never withheld — only its *shape* is sequenced.
+- **No-AI-first on every new topic.** First encounter is typed from primary docs. No generated
+  code, no autocomplete.
+- **30-minute self-debug window** before asking. Read the trace, form a hypothesis, test it.
+  Diagnosis is the skill AI erodes fastest.
+- **Blank-file rebuild is the completion bar.** A lesson counts as learned only when he can
+  reproduce its core from an empty file unaided. That attempt is what triggers a learning record.
+- **How help is given.** Syntax/API questions: answer straight. Errors: one pointed question
+  first, then the answer. Approach: give the shape (what pieces, in what order), not the code.
+  Past the 30-minute window: the fix and the why, no hazing.
+- **"Just give me the code" is honoured.** State the tradeoff once, then comply — but mark the
+  exercise *not demonstrated* so it comes back. Keeps `learning-records/` honest.
+- **Periodic offline build.** Every few roadmap steps, one project feature built docs-only, no
+  AI, time-boxed. Pass -> learning record. Fail -> tells us what to re-teach.
+
 ## Open decisions
 - **ORM/data layer not yet chosen.** Deliberate: he will learn *raw SQL first*, because an ORM
   taught to someone with no SQL produces a developer who cannot debug a slow query — fatal for
