@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Slow Request Triage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600&display=swap">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body class="ref">
+<main class="sheet">
+
+<header class="masthead">
+  <p class="eyebrow">Reference 02 · <a href="../lessons/0002-incident-cpu-low-but-slow.html">Incident 01</a> এর সাথী</p>
+  <h1>Slow Request Triage</h1>
+  <p class="standfirst">API slow। কোথায় দেখবে, কোন order এ, আর কোন সংখ্যা কোন fix এর দিকে দেখায়।</p>
+</header>
+
+<div class="callout">
+  <span class="label">মূল কথা</span>
+  <p><strong>Request এর সময় = কাজ (CPU) + অপেক্ষা (waiting)।</strong> CPU graph শুধু কাজ দেখায়।
+  অপেক্ষা CPU তে দেখা যায় না।</p>
+</div>
+
+<h2>তিন ধাপ, এই order এ</h2>
+
+<table>
+  <thead><tr><th>ধাপ</th><th>কী করবে</th><th>কী খুঁজছ</th></tr></thead>
+  <tbody>
+    <tr><td>১</td>
+        <td>প্রতিটা core আলাদা দেখো। Windows: Task Manager → CPU → <em>Logical processors</em>। Linux: <code>htop</code>।</td>
+        <td>একটা core ভরা, বাকি খালি → event loop এ ভারী কাজ। সব খালি → অপেক্ষা, ধাপ ২।</td></tr>
+    <tr><td>২</td>
+        <td>Slow endpoint এর প্রতিটা <code>await</code> এর আগে-পরে সময় log করো।</td>
+        <td>মোট সময়ের বেশিরভাগ কোন একটা ধাপে যাচ্ছে।</td></tr>
+    <tr><td>৩</td>
+        <td>সবচেয়ে বড় সংখ্যাটা নিচের table এ মেলাও।</td>
+        <td>ওটাই fix বলে দেয়। Guess করে fix বাছবে না।</td></tr>
+  </tbody>
+</table>
+
+<pre><code><span class="k">const</span> t = Date.now();
+<span class="k">const</span> rows = <span class="k">await</span> <span class="k">this</span>.db.query(...);
+console.log(<span class="s">'db query'</span>, Date.now() - t, <span class="s">'ms'</span>);</code></pre>
+
+<h2>লক্ষণ → কারণ → fix</h2>
+
+<table>
+  <thead><tr><th>যা দেখছ</th><th>সম্ভাব্য কারণ</th><th>Fix এর দিক</th><th>Roadmap</th></tr></thead>
+  <tbody>
+    <tr><td>একটা core ১০০%, বাকি খালি। Slow endpoint চলার সময় সাধারণ endpoint ও আটকে যায়।</td>
+        <td>Event loop এ CPU-heavy কাজ: বড় loop, বিশাল JSON, sync crypto।</td>
+        <td>কাজটা request এর বাইরে সরাও (queue), বা আরো app instance।</td>
+        <td>13, 14</td></tr>
+    <tr><td>সব core কম। Timing log এ একটা query ই প্রায় পুরো সময় নেয়।</td>
+        <td>Slow query, প্রায়ই পুরো table পড়ছে।</td>
+        <td><code>EXPLAIN ANALYZE</code>, তারপর index।</td>
+        <td>7</td></tr>
+    <tr><td>সব core কম। Query একা দ্রুত, কিন্তু load এ request সেকেন্ড নেয়।</td>
+        <td>Connection pool saturated: সব connection busy, বাকিরা লাইনে।</td>
+        <td>Pool size ঠিক করো, connection ধরে রাখার সময় কমাও, PgBouncer।</td>
+        <td>15</td></tr>
+    <tr><td>সব core কম। বাইরের API call এ সময় যাচ্ছে।</td>
+        <td>Payment / SMS / অন্য service slow, timeout নেই।</td>
+        <td>Timeout দাও। User এর অপেক্ষার দরকার না থাকলে queue তে পাঠাও।</td>
+        <td>13</td></tr>
+    <tr><td>সব core কম। একই row নিয়ে কাজ করা request গুলোই slow।</td>
+        <td>Lock: একটা transaction আরেকটার জন্য অপেক্ষা করছে।</td>
+        <td>Transaction ছোট রাখো, lock কম সময় ধরো।</td>
+        <td>6</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <span class="label">ভুল fix এর ফাঁদ</span>
+  <p><strong>আরো app instance</strong> সাহায্য করে শুধু যখন app এর CPU ভরা। Slow query হলে এটা
+  একই database এ আরো চাপ দেয়। <strong>বড় server</strong> খালি CPU আরো বাড়ায়। আগে মাপো, পরে fix।</p>
+</div>
+
+<h2>সংখ্যা যা মনে রাখার মতো</h2>
+
+<table>
+  <thead><tr><th>কী</th><th>মান</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td>N core এ একটা core ভরা হলে total CPU</td>
+        <td>১০০ ÷ N % (৮ core → ১২.৫%)</td>
+        <td>গড়ের হিসাব</td></tr>
+    <tr><td>Node এ JavaScript কয়টা thread এ চলে</td>
+        <td>একটা (event loop)</td>
+        <td><a href="https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop">Node.js docs</a></td></tr>
+    <tr><td><code>pg</code> Pool এর default <code>max</code></td>
+        <td>10</td>
+        <td><a href="https://node-postgres.com/apis/pool">node-postgres</a></td></tr>
+    <tr><td><code>pg</code> Pool এ connection এর জন্য default অপেক্ষা</td>
+        <td>কোনো timeout নেই (<code>connectionTimeoutMillis: 0</code>)</td>
+        <td><a href="https://node-postgres.com/apis/pool">node-postgres</a></td></tr>
+  </tbody>
+</table>
+
+<h2>শব্দ</h2>
+
+<table>
+  <thead><tr><th>Term</th><th>মানে</th></tr></thead>
+  <tbody>
+    <tr><td>p95 latency</td><td>১০০ টা request এর ৯৫ টা এর চেয়ে দ্রুত শেষ হয়। গড় (average) কয়েকটা খুব slow request লুকিয়ে ফেলে, p95 লুকায় না।</td></tr>
+    <tr><td>Event loop</td><td>Node এর একটাই thread, যেটা তোমার সব JavaScript চালায়। এটা আটকালে সব user আটকে যায়।</td></tr>
+    <tr><td>Utilization</td><td>Resource কত সময় busy ছিল।</td></tr>
+    <tr><td>Saturation</td><td>Resource এর কাছে জমে থাকা কাজ, যেটা সে এখনো ধরতে পারছে না — সাধারণত একটা queue।
+        (<a href="https://www.brendangregg.com/usemethod.html">USE Method</a>)</td></tr>
+  </tbody>
+</table>
+
+<nav class="footnav">
+  <ul>
+    <li>Lesson · <a href="../lessons/0002-incident-cpu-low-but-slow.html">Incident 01 · CPU 12%, তবু API slow</a></li>
+    <li>Source · <a href="https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop">Don't Block the Event Loop</a></li>
+    <li>Resources · <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  </ul>
+</nav>
+
+</main>
+</body>
+</html>

@@ -32,6 +32,18 @@ Curated, high-trust only. Every lesson cites from here. Pruned when something pr
   Paste a query + schema, get an index recommendation with reasoning. Use for: checking your
   own indexing answer *after* you've committed to one. Never before.
 
+## Knowledge — Node.js runtime & performance
+
+- [Node.js: Don't Block the Event Loop (or the Worker Pool)](https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop)
+  Official guide. States that JavaScript runs on the event loop and that a blocked thread cannot
+  serve any other client. Use for: CPU-bound slowness, why one heavy request stalls everyone.
+- [The USE Method — Brendan Gregg](https://www.brendangregg.com/usemethod.html)
+  "For every resource, check utilization, saturation, and errors." Use for: a checklist when a
+  system is slow but nothing looks busy.
+- [node-postgres: Pool](https://node-postgres.com/apis/pool)
+  Default `max` is 10; extra requests wait in a FIFO queue; default `connectionTimeoutMillis` is
+  0 (wait forever). Use for: pool saturation, and later the pooling lesson (step 15).
+
 ## Knowledge — Scalability & System Design
 
 - [The System Design Primer (GitHub)](https://github.com/donnemartin/system-design-primer)

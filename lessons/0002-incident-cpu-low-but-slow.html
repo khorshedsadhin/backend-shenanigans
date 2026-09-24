@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incident 01 · CPU Low, API Slow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600&display=swap">
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/quiz.js" defer></script>
+</head>
+<body>
+<main class="sheet">
+
+<header class="masthead">
+  <p class="eyebrow">Incident 01 · Roadmap step 1 এর পরে · দুই বসায় শেষ</p>
+  <h1>CPU 12%, তবু API slow</h1>
+  <p class="standfirst">Server দেখতে ঠিকঠাক, কিন্তু user রা অপেক্ষা করছে। সময় যাচ্ছে কোথায় —
+  আর কীভাবে guess না করে খুঁজে বের করবে।</p>
+</header>
+
+<div class="callout mission">
+  <span class="label">কেন এটা</span>
+  <p>তোমার <a href="../MISSION.md">mission</a> এর একটা লাইন: <em>whiteboard এ বোঝাতে পারা কেন একটা
+  request slow, আর {index, cache, queue, replica, আরো app instance} এর মধ্যে কোনটা সঠিক fix — আর বাকি
+  চারটা কেন না।</em> প্রতিটা Incident lesson এই দক্ষতার একটা টুকরা। আজকেরটা সবচেয়ে মৌলিক: সময়টা
+  কি <strong>কাজে</strong> যাচ্ছে, নাকি <strong>অপেক্ষায়</strong>?</p>
+</div>
+
+<p><strong>আগে যা লাগবে:</strong> <a href="0001-the-di-container.html">Lesson 01</a>। Part A যেকোনো সময়
+পড়া যায়। Part B তে Lesson 01 এর <code>scale-lab</code> project লাগবে।</p>
+
+<div class="part"><strong>Part A · ঘটনা আর চিন্তার ধরন</strong><span>~20 min · no setup</span></div>
+
+<h2>1 · ঘটনা</h2>
+
+<p>রাত ১০টা। Monitoring dashboard এ দেখা যাচ্ছে:</p>
+
+<pre><code>CPU (total)      12%
+Memory           41%
+Error rate       0.1%
+p95 latency      3.1 s    <span class="c">← সাধারণত 120 ms</span></code></pre>
+
+<p><em class="term">p95 latency</em> মানে: ১০০ টা request এর মধ্যে ৯৫ টা এর চেয়ে দ্রুত শেষ হয়েছে। অর্থাৎ
+অনেক user ৩ সেকেন্ডের বেশি অপেক্ষা করছে। Team lead জিজ্ঞেস করলেন: <em>"CPU তো প্রায় খালি। Server ঠিক
+আছে। তাহলে slow কেন?"</em></p>
+
+<p>তুমি কী দেখবে, কোন order এ? পড়ার আগে মনে মনে একটা উত্তর ঠিক করো।</p>
+
+<h2>2 · Request এর সময় = কাজ + অপেক্ষা</h2>
+
+<p>একটা request এর মোট সময় দুই ভাগে যায়:</p>
+
+<ul>
+  <li><strong>কাজ (CPU):</strong> তোমার code আসলে হিসাব করছে — loop, JSON বানানো, hash করা।</li>
+  <li><strong>অপেক্ষা (waiting):</strong> code কিছু করছে না, অন্য কারো উত্তরের জন্য বসে আছে — database,
+      অন্য একটা API, pool এ খালি connection, একটা lock।</li>
+</ul>
+
+<p>CPU graph শুধু প্রথম ভাগ মাপে। অপেক্ষা CPU তে <strong>দেখাই যায় না</strong>। একটা দোকানের কথা ভাবো:
+দোকানদার বসে আছে কারণ supplier এর মাল এখনো আসেনি। দোকানদার busy না (CPU কম), কিন্তু customer এর লাইন
+বাড়ছে (latency বেশি)।</p>
+
+<p>তাই "CPU কম কিন্তু slow" এর দুইটা সম্ভাব্য ব্যাখ্যা আছে। দুইটাই দেখতে হবে।</p>
+
+<h2>3 · ফাঁদ ১: ১২% মানে "একটা core পুরো ভরা" হতে পারে</h2>
+
+<p>Server এ ৮টা core থাকলে, total CPU হলো ৮টার গড়। একটা core ১০০% আর বাকি সাতটা ০% হলে total দেখায়
+<strong>১০০ ÷ ৮ = ১২.৫%</strong>। দেখতে "প্রায় খালি", আসলে একটা core দম বন্ধ করে দৌড়াচ্ছে।</p>
+
+<p>Node এর ক্ষেত্রে এটা খুব জরুরি, কারণ তোমার JavaScript একটাই thread এ চলে। Node docs:
+<em>"Node.js runs JavaScript code in the Event Loop"</em>, আর
+<em>"While a thread is blocked working on behalf of one client, it cannot handle requests from any
+other clients."</em>
+(<a href="https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop">Don't Block the Event Loop</a>)</p>
+
+<p>মানে: একটা request যদি ৩ সেকেন্ড ধরে CPU তে ভারী কাজ করে (বড় loop, বিশাল JSON parse, sync
+crypto), তাহলে ওই ৩ সেকেন্ড <strong>অন্য সব user</strong> আটকে থাকে — যদিও total CPU মাত্র ১২%।</p>
+
+<div class="callout">
+  <span class="label">কীভাবে চেক করবে</span>
+  <p>Total না, <strong>প্রতিটা core আলাদা</strong> দেখো। Windows এ: Task Manager → Performance → CPU →
+  graph এ right-click → <em>Change graph to → Logical processors</em>। একটা box ভরা আর বাকিগুলো খালি?
+  তাহলে event loop block। Linux server এ একই কাজ করে <code>htop</code>।</p>
+</div>
+
+<h2>4 · ফাঁদ ২: আসলেই অপেক্ষা</h2>
+
+<p>যদি সব core ই কম থাকে, তাহলে code আসলেই কারো জন্য বসে আছে। সবচেয়ে common জায়গাগুলো:</p>
+
+<ul>
+  <li><strong>Slow query.</strong> Database একটা query তে ২.৮ সেকেন্ড নিচ্ছে, কারণ পুরো table পড়ছে।
+      Fix সাধারণত index — roadmap step 7।</li>
+  <li><strong>Connection pool ভরা।</strong> App database এর সাথে অল্প কয়টা connection খোলা রাখে, আর
+      সেগুলো share করে। Postgres এর Node driver এ default হলো ১০টা। সব busy হলে
+      <em>"requests will wait in a FIFO queue until a client becomes available"</em>, আর default এ এই
+      অপেক্ষার কোনো timeout নেই
+      (<a href="https://node-postgres.com/apis/pool">node-postgres Pool</a>)। প্রতিটা query দ্রুত, তবু
+      request লাইনে দাঁড়িয়ে slow — roadmap step 15।</li>
+  <li><strong>বাইরের API, timeout ছাড়া।</strong> Payment বা SMS provider slow হলে তোমার request ও ঠিক ততটাই
+      slow। Timeout না দিলে চিরকাল অপেক্ষা করতে পারে।</li>
+  <li><strong>Lock.</strong> দুইটা transaction একই row চাইছে, একটা আরেকটার জন্য অপেক্ষা করছে — roadmap step 6।</li>
+</ul>
+
+<p>একটা নাম মনে রাখো: <em class="term">saturation</em>। Brendan Gregg এর <a href="https://www.brendangregg.com/usemethod.html">USE
+Method</a> বলে: <em>"For every resource, check utilization, saturation, and errors."</em> Saturation
+মানে একটা resource এর কাছে এমন কাজ জমে আছে যেটা সে এখনো ধরতে পারছে না — সাধারণত একটা queue। CPU এর
+utilization কম, কিন্তু connection pool saturated — এটাই ফাঁদ ২।</p>
+
+<div class="callout">
+  <span class="label">কেন "আরো server দাও" সবসময় fix না</span>
+  <p>Event loop block হলে আরো app instance (step 14) আসলেই সাহায্য করে — কাজ ভাগ হয়ে যায়। কিন্তু slow
+  query হলে আরো instance মানে <strong>একই database এ আরো বেশি চাপ</strong>। সমস্যা বাড়ে। কোথায়
+  অপেক্ষা হচ্ছে না জেনে fix বেছে নিলে ভুল fix এর সম্ভাবনাই বেশি।</p>
+</div>
+
+<h2>5 · Triage: তিন ধাপ, এই order এ</h2>
+
+<ol class="steps">
+  <li><strong>প্রতিটা core দেখো।</strong> একটা ভরা? → event loop এ ভারী কাজ। সব খালি? → অপেক্ষা, ধাপ ২ এ যাও।</li>
+  <li><strong>প্রতিটা ধাপের সময় মাপো, guess করো না।</strong> Slow endpoint এর প্রতিটা <code>await</code> এর
+      আগে-পরে সময় log করো:
+<pre><code><span class="k">const</span> t = Date.now();
+<span class="k">const</span> orders = <span class="k">await</span> <span class="k">this</span>.db.query(...);
+console.log(<span class="s">'db query'</span>, Date.now() - t, <span class="s">'ms'</span>);</code></pre>
+      Step 9 এ এটা ঠিকমতো logging দিয়ে করব। আপাতত এটাই যথেষ্ট।</li>
+  <li><strong>সবচেয়ে বড় সংখ্যাটাই fix বলে দেয়।</strong> Query নিজে slow → index। Query দ্রুত কিন্তু
+      শুরু হতে দেরি → pool। বাইরের call slow → timeout, বা কাজটা queue তে পাঠাও (step 13)।</li>
+</ol>
+
+<h2>6 · নিজেকে চেক করো</h2>
+
+<div class="quiz" data-answer="1">
+  <div class="qnum">Check 1</div>
+  <p class="qtext">৮ core এর server। Total CPU ১২%। Per-core graph এ একটা core ১০০%, বাকি সাতটা প্রায় ০%।
+  সবচেয়ে সম্ভাব্য কারণ কী?</p>
+  <button class="opt" data-fb="Slow query হলে app অপেক্ষা করে, CPU পোড়ায় না। তাহলে সব core ই খালি থাকত, একটা ভরা থাকত না।">Database এ slow query, app অপেক্ষায়</button>
+  <button class="opt" data-fb="একটা core ভরা = একটা thread পুরো busy। Node এর JavaScript একটাই thread এ চলে, তাই ভারী কাজ ওই thread আটকে দেয়, আর বাকি সব request লাইনে দাঁড়ায়।">Event loop এ ভারী কাজ, এক core ভরা</button>
+  <button class="opt" data-fb="Memory কম থাকলে সেটা memory graph এ দেখা যেত, আর ঠিক একটা core এর ১০০% হওয়া এর লক্ষণ না।">RAM কম, তাই disk এ বারবার swap হচ্ছে</button>
+  <button class="opt" data-fb="Network এর দেরি হলো অপেক্ষা, CPU তে এর কোনো চিহ্ন থাকে না। একটা core ভরা থাকার ব্যাখ্যা এটা না।">Network slow, response যেতে দেরি হয়</button>
+</div>
+
+<div class="quiz" data-answer="2">
+  <div class="qnum">Check 2</div>
+  <p class="qtext">সব core কম। <code>/orders</code> ৩ সেকেন্ড নেয়। তোমার timing log বলছে এর মধ্যে ২.৮ সেকেন্ড
+  একটা database query তে যাচ্ছে। প্রথম fix কোনটা?</p>
+  <button class="opt" data-fb="আরো instance মানে একই database এ একই slow query আরো বেশি বার। Database এর চাপ বাড়ে, query দ্রুত হয় না।">App এর আরো কয়েকটা instance চালাও</button>
+  <button class="opt" data-fb="App এর CPU তো খালিই পড়ে আছে। বেশি core দিলে খালি core আরো বাড়বে, query এর সময় একটুও কমবে না।">বেশি core এর বড় server নিয়ে নাও</button>
+  <button class="opt" data-fb="সময় যাচ্ছে query তে, তাই fix ও query তে। EXPLAIN দেখায় database কীভাবে query চালাচ্ছে; প্রায়ই দেখা যায় পুরো table পড়ছে, আর একটা index সেটা ঠিক করে (step 7)।">Query টা EXPLAIN করে একটা index দাও</button>
+  <button class="opt" data-fb="Node version এর সাথে database এর query plan এর কোনো সম্পর্ক নেই। সময় যাচ্ছে database এর ভেতরে।">Node এর version টা update করে দেখো</button>
+</div>
+
+<div class="quiz" data-answer="0">
+  <div class="qnum">Check 3</div>
+  <p class="qtext">সব core কম। প্রতিটা query একা চালালে ২০ ms। কিন্তু traffic বাড়লে request গুলো কয়েক
+  সেকেন্ড নেয়। App এর connection pool এ max ১০টা connection। কী হচ্ছে?</p>
+  <button class="opt" data-fb="Pool saturated: ১০টা connection busy, বাকি request খালি connection এর জন্য লাইনে দাঁড়িয়ে। Query দ্রুত, কিন্তু query শুরু হওয়ার আগের অপেক্ষাটাই লম্বা।">১০টা connection busy, বাকিরা লাইনে</button>
+  <button class="opt" data-fb="একা চালালে ২০ ms মানে query নিজে দ্রুত। সমস্যা শুধু load এ আসে — এটা queue এর লক্ষণ, slow query এর না।">Query গুলো আসলে slow, log ভুল বলছে</button>
+  <button class="opt" data-fb="Event loop block হলে অন্তত একটা core ভরা থাকত। এখানে সব core কম।">Event loop block, তাই সব আটকে আছে</button>
+  <button class="opt" data-fb="Database crash করলে error rate বাড়ত, শুধু latency না। আর একা চালালে query ঠিকঠাক চলছে।">Database crash করে বারবার restart</button>
+</div>
+
+<h2>7 · মনে করে লেখো</h2>
+
+<div class="recall">
+  <p class="qtext">স্মৃতি থেকে: "CPU কম কিন্তু API slow" — কোন তিনটা জিনিস দেখবে, কোন order এ, আর কেন ওই order?</p>
+  <textarea placeholder="উপরে scroll না। এলোমেলো notes হলেও চলবে।"></textarea>
+  <button>Model answer দেখাও</button>
+  <div class="model" hidden>
+    <p><strong>১. প্রতিটা core আলাদা।</strong> Total CPU একটা ভরা core লুকিয়ে ফেলতে পারে। একটা ভরা =
+    event loop এ ভারী কাজ।<br>
+    <strong>২. প্রতিটা ধাপের সময়।</strong> সব core খালি হলে code অপেক্ষা করছে — কোথায়, সেটা মেপে বের করো।<br>
+    <strong>৩. সবচেয়ে বড় সংখ্যা → fix।</strong> Slow query → index। Pool এ লাইন → pooling। বাইরের
+    API → timeout বা queue।</p>
+    <p>Order টা এমন কারণ প্রথম ধাপ সবচেয়ে সস্তা (এক নজর), আর সেটাই ঠিক করে দেয় তুমি "কাজ" খুঁজবে নাকি
+    "অপেক্ষা"।</p>
+  </div>
+</div>
+
+<div class="done">Part A শেষ। Part B তে তুমি নিজের চোখে দুইটা ফাঁদই বানাবে আর মাপবে।</div>
+
+<div class="part"><strong>Part B · নিজে বানাও, নিজে মাপো</strong><span>~15 min · scale-lab</span></div>
+
+<ol class="steps">
+  <li><code>scale-lab</code> এর <code>UsersController</code> এ দুইটা route যোগ করো (কোনো
+      <code>@Get(':id')</code> থাকলে তার উপরে রাখো):
+<pre><code><span class="d">@Get</span>(<span class="s">'slow-wait'</span>)
+<span class="k">async</span> slowWait() {
+  <span class="c">// database বা বাইরের API এর অপেক্ষার নকল</span>
+  <span class="k">await new</span> Promise((r) =&gt; setTimeout(r, 3000));
+  <span class="k">return</span> <span class="s">'waited'</span>;
+}
+
+<span class="d">@Get</span>(<span class="s">'slow-cpu'</span>)
+slowCpu() {
+  <span class="c">// ৩ সেকেন্ড ধরে শুধু CPU পোড়ায়</span>
+  <span class="k">const</span> end = Date.now() + 3000;
+  <span class="k">while</span> (Date.now() &lt; end) {}
+  <span class="k">return</span> <span class="s">'burned'</span>;
+}</code></pre></li>
+  <li><code>npm run start:dev</code>। তারপর <strong>আরেকটা</strong> PowerShell window এ একসাথে ৫টা
+      request পাঠাও। <code>curl.exe</code> লিখবে, শুধু <code>curl</code> না — PowerShell এ
+      <code>curl</code> অন্য একটা command।
+<pre><code>curl.exe -s -Z --parallel-immediate -o NUL -w "%{time_total}s\n" "http://localhost:3000/users/slow-wait?n=[1-5]"</code></pre>
+      প্রতিটা request কত সেকেন্ড নিলো, লিখে রাখো।</li>
+  <li>একই command, এবার <code>slow-cpu</code> দিয়ে। চলার সময় Task Manager এর Logical processors view
+      খোলা রাখো। সময়গুলো লিখে রাখো, আর কয়টা core এর graph উঠলো দেখো।</li>
+  <li><code>slow-cpu</code> এর ৫টা request চলার সময়ই তৃতীয় একটা window থেকে সাধারণ
+      <code>/users</code> hit করো:
+<pre><code>curl.exe -s -o NUL -w "%{time_total}s\n" http://localhost:3000/users</code></pre>
+      এটা তো কোনো ভারী কাজ করে না। তবু কত সময় নিলো?</li>
+  <li><strong>জোরে জোরে ব্যাখ্যা করো:</strong> <code>slow-wait</code> এর ৫টা কেন প্রায় একই সময়ে শেষ হলো,
+      আর <code>slow-cpu</code> এর ৫টা কেন হলো না? <code>/users</code> কেন আটকে গেল?</li>
+</ol>
+
+<div class="done">Part B শেষ হলে terminal এ আমাকে তোমার লেখা সময়গুলো আর step 5 এর ব্যাখ্যা পাঠাও। সংখ্যা
+আর ব্যাখ্যা মিললে এটা learning record এ উঠবে।</div>
+
+<div class="callout">
+  <span class="label">এরপর পড়ো</span>
+  <p><strong>Primary source:</strong>
+  <a href="https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop">Node.js → Don't
+  Block the Event Loop (or the Worker Pool)</a>। প্রথম তিনটা section যথেষ্ট — Part B তে তুমি যা দেখলে,
+  সেটার পেছনের কারণ। সময় থাকলে <a href="https://www.brendangregg.com/usemethod.html">The USE Method</a>
+  এর প্রথম অংশ। পুরো list <a href="../RESOURCES.md">RESOURCES.md</a> এ।</p>
+</div>
+
+<div class="callout">
+  <span class="label">আমাকে জিজ্ঞেস করো</span>
+  <p>আমি তোমার teacher। Part B এর সংখ্যা যদি উপরের কথার সাথে না মেলে, curl command কাজ না করে, বা
+  "অপেক্ষা" আর "কাজ" এর পার্থক্য এখনো ঘোলা লাগে — <strong>terminal এ আমাকে জিজ্ঞেস করো।</strong>
+  বাংলা, Banglish, English — যেভাবে সুবিধা। কোনো real project এ এমন slow কিছু দেখলে সেটাও নিয়ে এসো,
+  ওটাই সবচেয়ে ভালো practice।</p>
+</div>
+
+<nav class="footnav">
+  <p><strong>তুমি কোথায়:</strong> Incident track এর ১ নম্বর, roadmap step 1 এর পরে। পুরো roadmap
+  <a href="../NOTES.md">NOTES.md</a> এ।</p>
+  <ul>
+    <li>Reference · <a href="../reference/0002-slow-request-triage.html">Slow Request Triage</a> — print করে রাখো।</li>
+    <li>আগে · <a href="0001-the-di-container.html">Lesson 01 · The Container</a></li>
+    <li>Mission · <a href="../MISSION.md">MISSION.md</a></li>
+    <li>Next · <em>Lesson 02: Relational thinking — MongoDB ভুলে যাওয়া।</em> এখনো লেখা হয়নি; বললেই লিখব।</li>
+  </ul>
+</nav>
+
+</main>
+</body>
+</html>
