@@ -22,7 +22,8 @@ ability to defend its design out loud.
 - Answer a mid-level backend interview's system-design round without bluffing.
 
 ## Constraints
-- ~8–12 hrs/week. Serious side commitment, not full-time.
+- ~3–5 hrs/week, alongside a varsity project and a part-time job. Revised down from 8–12 on
+  2026-09-24; see `learning-records/0002`.
 - TypeScript: comfortable with basics; generics, decorators and DI patterns are still fuzzy.
   Teach them at point of use, never as a standalone TS course.
 - SQL: near zero. Relational thinking must be built from the ground up, not assumed.

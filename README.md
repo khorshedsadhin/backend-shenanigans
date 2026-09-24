@@ -40,5 +40,6 @@ current position live in [NOTES.md](NOTES.md).
 
 ## Status
 
-One lesson written and in progress. This repository grows as lessons are written and learning
+Two lessons written: lesson 01 (the DI container) and Incident 01 (CPU low but API slow), both
+in Bangla. This repository grows as lessons are written and learning
 records are added; it is not a finished product.

@@ -52,6 +52,11 @@ duplicate. New reusable widgets go in `assets/` and get linked, not copy-pasted.
 **Quiz answers must be near-identical in length.** Uneven option lengths leak the answer through
 formatting. This is checked by eye when authoring — keep options within a few characters.
 
+**Language.** Lessons and reference sheets are written in Bangla script with English kept for
+code, error messages and technical terms. Set `<html lang="bn">` (it switches the font stack in
+`course.css` and the UI strings in `quiz.js`) and link Noto Serif Bengali from Google Fonts.
+Lessons come in parts of ~15–25 min (`.part` marker, `.done` box); see `NOTES.md`.
+
 **Every lesson must contain**: a mission tie-in callout, a cited primary source, an "Ask me"
 callout reminding the learner the agent is their teacher, and footer links to its reference sheet
 and to `NOTES.md` for roadmap position.

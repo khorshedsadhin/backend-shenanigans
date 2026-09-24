@@ -6,13 +6,21 @@
 - SQL: **near zero.** Do not assume joins, normalisation, indexes, or transactions.
 - Prior: React; one Express + MongoDB project. Self-described non-expert. Explicitly asked
   not to be treated as though he knows these things together.
-- Time: ~8–12 hrs/week.
+- Time: ~3–5 hrs/week (revised 2026-09-24, was 8–12). Short weekday sittings, one bigger
+  weekend hands-on. Competes with a varsity project, a part-time job, and gaming.
 - Platform: Windows 11. Docker Desktop assumed for Postgres/Redis.
 
 ## Teaching preferences observed
 - Asked for the *whole map* (load balancing, queues, caching) up front — he wants to see where
   he's going. Keep a visible roadmap; each lesson should say where it sits on it.
 - Warned against overestimating him. Bias toward smaller steps and more retrieval practice.
+- **Language (2026-09-24): Bangla script, English technical terms.** Code, error messages and
+  terms stay English. Simple sentences. Replies often come in Banglish; that is fine.
+- **Sitting size (2026-09-24).** Lesson 01 sat untouched for ~20 days. The stated cause was time,
+  not difficulty. Split every lesson into parts of ~15–25 min, each ending in a visible "done"
+  box, so one sitting is always a finishable unit. Part A = reading + quiz, no setup.
+- **Wants real-world diagnosis** ("CPU 12%, server fine, API slow"). Served by the Incident track
+  below. Incidents are more motivating than abstract topics; lean on them.
 
 ## Working agreement (2026-09-11)
 He wants to be able to build real projects **without** AI, so that using AI multiplies his
@@ -55,3 +63,10 @@ output instead of replacing his skill. Help is never withheld — only its *shap
 14. Load testing. Statelessness. N instances behind a load balancer.
 15. Replication, read replicas, connection pooling (PgBouncer).
 16. System design articulation — the interview round.
+
+**Incident track** (added 2026-09-24, runs alongside the roadmap, does not replace a step).
+Real production symptoms, diagnosed with what the roadmap has taught so far. One after step 1,
+then one every 2–3 steps.
+- Incident 01 — CPU 12% but API slow: work vs. waiting, blocked event loop, pool saturation.
+  ← *lesson 0002*. Next candidates: slow endpoint fixed by an index (after step 7), cart data
+  leaking between users (singleton state, after step 3), a queue that silently drops jobs (after 13).
