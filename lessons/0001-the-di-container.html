@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Lesson 01 · The Container</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600&display=swap">
 <link rel="stylesheet" href="../assets/course.css">
 <script src="../assets/quiz.js" defer></script>
 </head>
@@ -11,46 +14,52 @@
 <main class="sheet">
 
 <header class="masthead">
-  <p class="eyebrow">Lesson 01 · Roadmap step 1 of 16 · ~30 minutes</p>
+  <p class="eyebrow">Lesson 01 · Roadmap step 1 of 16 · দুই বসায় শেষ</p>
   <h1>The Container</h1>
-  <p class="standfirst">Why NestJS refuses to let you <code>new</code> your own services — and why
-  that refusal is the first thing that makes your backend scalable.</p>
+  <p class="standfirst">NestJS কেন তোমাকে নিজে <code>new</code> দিয়ে service বানাতে দেয় না — আর
+  এই "না" টাই কেন তোমার backend কে scale করার প্রথম ধাপ।</p>
 </header>
 
 <div class="callout mission">
-  <span class="label">Why this, first</span>
-  <p>Your mission is to be <a href="../MISSION.md">hired as a backend engineer</a>. Every
-  NestJS interview opens with some version of <em>"why Nest instead of Express?"</em> — and
-  almost every bug you will hit in your first month is a wiring bug. Both have the same answer,
-  and it is the topic of this lesson.</p>
+  <span class="label">কেন এটা আগে</span>
+  <p>তোমার mission: <a href="../MISSION.md">backend engineer হিসেবে চাকরি পাওয়া</a>। প্রায় সব
+  NestJS interview শুরু হয় এই প্রশ্ন দিয়ে: <em>"Express না নিয়ে Nest কেন?"</em> আর প্রথম মাসে তুমি
+  যত bug পাবে, তার বেশিরভাগ হবে wiring bug। দুটোর উত্তর একই — আর সেটাই এই lesson।</p>
 </div>
 
-<h2>1 · The problem Express leaves you with</h2>
+<p>এই lesson দুই ভাগে। <strong>Part A</strong> শুধু পড়া আর quiz, কোনো setup নেই, ~১৫ মিনিট।
+<strong>Part B</strong> হাতে-কলমে, ~২৫ মিনিট — weekend এর জন্য রাখতে পারো। আজ শুধু Part A করলেই যথেষ্ট।</p>
 
-<p>In the Express project you built, you wired dependencies by hand. Somewhere there was a file
-that did roughly this:</p>
+<div class="part"><strong>Part A · ধারণা</strong><span>~15 min · no setup</span></div>
 
-<pre><code><span class="c">// express — you are the wiring</span>
+<h2>1 · Express এ তুমি নিজেই wiring করো</h2>
+
+<p>তোমার Express project এ কোথাও এরকম একটা file ছিল:</p>
+
+<pre><code><span class="c">// express — wiring তুমি নিজে করছ</span>
 <span class="k">const</span> db = require(<span class="s">'./db'</span>);
 <span class="k">const</span> userService = <span class="k">new</span> UserService(db);
 <span class="k">const</span> userRouter  = <span class="k">new</span> UserRouter(userService);</code></pre>
 
-<p>This works. It also quietly creates three problems that only appear at scale. Every file that
-needs <code>UserService</code> must know how to <em>build</em> one, so the constructor signature
-leaks across your whole codebase. Swapping the real database for a fake one in a test means
-re-doing that wiring by hand in every test file. And nothing stops two different files from each
-calling <code>new UserService(...)</code>, so you can end up with two instances holding two
-different caches, two different connection pools, two different truths.</p>
+<p>এটা কাজ করে। কিন্তু project বড় হলে তিনটা সমস্যা আসে:</p>
 
-<h2>2 · Nest's answer: declare, don't construct</h2>
+<ol>
+  <li>যে file এর <code>UserService</code> লাগবে, তাকেই জানতে হবে কীভাবে এটা <em>বানাতে</em> হয়।
+      Constructor বদলালে সব জায়গায় বদলাতে হয়।</li>
+  <li>Test এ আসল database এর জায়গায় fake দিতে চাইলে প্রতিটা test file এ আবার হাতে wiring।</li>
+  <li>দুইটা file যদি আলাদা করে <code>new UserService(...)</code> করে, তাহলে দুইটা instance —
+      দুইটা আলাদা cache, দুইটা আলাদা connection pool। একই জিনিসের দুইটা "সত্য"।</li>
+</ol>
 
-<p>NestJS ships an <em class="term">IoC container</em> — <em>inversion of control</em>. You stop
-constructing dependencies and start <em>declaring</em> them. The framework builds the object
-graph for you, once, at startup.</p>
+<h2>2 · Nest এর উত্তর: বানিও না, শুধু বলো কী লাগবে</h2>
+
+<p>NestJS এর ভেতরে একটা <em class="term">IoC container</em> আছে — <em>inversion of control</em>।
+তুমি আর নিজে object বানাও না। তুমি শুধু <em>declare</em> করো কোন class এর কী লাগবে। App চালু হওয়ার
+সময় Nest একবারে সব বানিয়ে জোড়া লাগিয়ে রাখে।</p>
 
 <div class="compare wide">
   <div>
-    <h4>You write this</h4>
+    <h4>তুমি লেখো</h4>
 <pre><code><span class="d">@Injectable</span>()
 <span class="k">export class</span> <span class="t">UserService</span> {
   constructor(
@@ -59,96 +68,93 @@ graph for you, once, at startup.</p>
 }</code></pre>
   </div>
   <div>
-    <h4>Nest does this</h4>
-<pre><code><span class="c">// at application startup,</span>
-<span class="c">// exactly once, in order:</span>
+    <h4>Nest নিজে করে</h4>
+<pre><code><span class="c">// app startup এ,</span>
+<span class="c">// একবারই, ঠিক order এ:</span>
 <span class="k">const</span> db = <span class="k">new</span> Database();
 <span class="k">const</span> userService =
   <span class="k">new</span> UserService(db);</code></pre>
   </div>
 </div>
 
-<p>You never call <code>new UserService</code>. You describe what it needs, and the container
-satisfies it. That inversion — <em>you no longer control construction</em> — is what the "IoC"
-in <a href="https://docs.nestjs.com/providers">the official docs</a> stands for.</p>
+<p>তুমি কখনো <code>new UserService</code> লেখো না। Constructor এ লিখে দাও কী লাগবে, container সেটা
+দিয়ে দেয়। Object বানানোর control আর তোমার হাতে নেই — এটাই "IoC" এর মানে
+(<a href="https://docs.nestjs.com/providers">official docs</a>)।</p>
 
-<h3>The three decorators doing the work</h3>
+<h3>তিনটা decorator যারা আসল কাজ করে</h3>
 
-<p>Decorators are new to you, so be precise about what one is. A decorator is a function prefixed
-with <code>@</code> that attaches hidden metadata to a class. It does not change what the class
-<em>does</em>. It changes what the framework <em>knows</em> about it.</p>
+<p>Decorator তোমার কাছে নতুন, তাই আগে এটা পরিষ্কার করি। Decorator হলো <code>@</code> দিয়ে শুরু
+একটা function, যেটা class এর গায়ে কিছু লুকানো তথ্য (metadata) লাগিয়ে দেয়। Class কী <em>করে</em>
+সেটা বদলায় না। Framework class সম্পর্কে কী <em>জানে</em>, সেটা বদলায়।</p>
 
 <ul>
-  <li><code>@Injectable()</code> — <strong>"this class <em>may</em> be managed by the container."</strong>
-      It attaches type metadata about the constructor parameters. Without it, Nest cannot see
-      what the constructor wants.</li>
-  <li><code>@Controller('users')</code> — <strong>"this class handles HTTP."</strong> It is a
-      class that owns a URL prefix, with the routing table declared on its methods. This is your
-      Express router, inverted.</li>
-  <li><code>@Module({...})</code> — <strong>"here is a boundary, and here is what lives inside it."</strong>
-      This is the one that trips people up, so it gets its own section.</li>
+  <li><code>@Injectable()</code> — <strong>"এই class container চালাতে পারবে।"</strong> Constructor এ
+      কী কী parameter আছে সেই তথ্য লাগিয়ে দেয়। এটা না থাকলে Nest দেখতেই পায় না constructor কী চায়।</li>
+  <li><code>@Controller('users')</code> — <strong>"এই class HTTP request ধরে।"</strong> একটা URL prefix
+      এর মালিক, আর তার method গুলোতে route লেখা থাকে। তোমার Express router, উল্টো দিক থেকে।</li>
+  <li><code>@Module({...})</code> — <strong>"এটা একটা সীমানা, আর এর ভেতরে এরা থাকে।"</strong> এটাতেই
+      সবাই আটকায়, তাই এর জন্য আলাদা section।</li>
 </ul>
 
 <div class="callout">
-  <span class="label">Precision matters here</span>
-  <p><code>@Injectable()</code> makes a class <em>injectable</em>. It does <strong>not</strong>
-  register it. Registration is a separate, explicit act — putting the class in a module's
-  <code>providers</code> array. Forgetting the second step is the single most common NestJS
-  error a beginner hits, and you will see it in the quiz below.</p>
+  <span class="label">এখানে সাবধান</span>
+  <p><code>@Injectable()</code> class কে শুধু <em>injectable</em> বানায়। এটা <strong>register
+  করে না</strong>। Register করা আলাদা একটা কাজ — module এর <code>providers</code> array তে class টা
+  লেখা। এই দ্বিতীয় ধাপ ভুলে যাওয়াই beginner দের সবচেয়ে common NestJS error। নিচের quiz এ এটা দেখবে।</p>
 </div>
 
-<h2>3 · Modules are boundaries, not folders</h2>
+<h2>3 · Module মানে সীমানা, folder না</h2>
 
-<p>A module has four arrays, and each answers a different question:</p>
+<p>একটা module এ চারটা array, প্রতিটা আলাদা প্রশ্নের উত্তর দেয়:</p>
 
 <pre><code><span class="d">@Module</span>({
-  imports:     [<span class="t">DatabaseModule</span>],  <span class="c">// what I need from elsewhere</span>
-  controllers: [<span class="t">UserController</span>],  <span class="c">// my HTTP entry points</span>
-  providers:   [<span class="t">UserService</span>],     <span class="c">// what I own and inject internally</span>
-  exports:     [<span class="t">UserService</span>],     <span class="c">// what I lend to modules importing me</span>
+  imports:     [<span class="t">DatabaseModule</span>],  <span class="c">// অন্য module থেকে আমার কী লাগবে</span>
+  controllers: [<span class="t">UserController</span>],  <span class="c">// আমার HTTP দরজা</span>
+  providers:   [<span class="t">UserService</span>],     <span class="c">// আমার নিজের জিনিস, ভেতরে inject হয়</span>
+  exports:     [<span class="t">UserService</span>],     <span class="c">// যে আমাকে import করে, তাকে ধার দিই</span>
 })
 <span class="k">export class</span> <span class="t">UserModule</span> {}</code></pre>
 
-<p>The rule that carries all the weight: <strong>a provider is private to its module unless it is
-exported.</strong> Listing <code>UserService</code> in <code>providers</code> makes it available
-to <code>UserController</code> and to other providers <em>in that same module</em> — nowhere else.
-For <code>OrderModule</code> to inject <code>UserService</code>, two things must both be true:
-<code>UserModule</code> must <code>export</code> it, and <code>OrderModule</code> must
-<code>import</code> <code>UserModule</code>.</p>
+<p>সবচেয়ে জরুরি নিয়ম: <strong>provider তার module এর private, যতক্ষণ না সেটা export করা হয়।</strong>
+<code>UserService</code> কে <code>providers</code> এ রাখলে সেটা শুধু <em>ওই একই module</em> এর
+<code>UserController</code> আর অন্য provider রা পায় — আর কেউ না।</p>
 
-<p>This is a real encapsulation boundary, enforced at startup — not a folder convention. It is
-why a large Nest codebase stays navigable where a large Express codebase turns into a web of
-mutual imports.</p>
+<p><code>OrderModule</code> যদি <code>UserService</code> চায়, তাহলে দুইটা জিনিসই লাগবে:
+<code>UserModule</code> কে সেটা <code>export</code> করতে হবে, আর <code>OrderModule</code> কে
+<code>UserModule</code> <code>import</code> করতে হবে। একটা দিলে হবে না।</p>
 
-<h2>4 · The scaling payoff: singletons and statelessness</h2>
+<p>এটা শুধু folder সাজানো না — app চালু হওয়ার সময় Nest এটা আসলেই চেক করে। এজন্য বড় Nest codebase
+পরিষ্কার থাকে, আর বড় Express codebase import এর জালে পেঁচিয়ে যায়।</p>
 
-<p>By default, the container creates <strong>one instance of each provider for the entire
-application lifetime</strong>. The Nest docs are unambiguous:
+<h2>4 · Scale এর লাভ: singleton আর stateless</h2>
+
+<p>By default, container প্রতিটা provider এর <strong>পুরো app এর জন্য একটাই instance</strong> বানায়।
+Nest docs পরিষ্কার বলে:
 <em>"A single instance of the provider is shared across the entire application. The instance
 lifetime is tied directly to the application lifecycle."</em>
 (<a href="https://docs.nestjs.com/fundamentals/injection-scopes">Injection Scopes</a>)</p>
 
-<p>One instance. Serving every request. Concurrently. Which forces a discipline that turns out to
-be the foundation of everything else on your roadmap:</p>
+<p>একটা instance। সব request সামলায়। একই সময়ে। তাই একটা নিয়ম মানতেই হয় — আর পুরো roadmap এর
+বাকি সব কিছু এই নিয়মের উপর দাঁড়িয়ে:</p>
 
 <div class="compare wide">
   <div>
-    <h4>Broken at scale</h4>
+    <h4>Scale এ ভাঙবে</h4>
 <pre><code><span class="d">@Injectable</span>()
 <span class="k">export class</span> <span class="t">CartService</span> {
-  <span class="c">// shared by ALL users, forever</span>
+  <span class="c">// সব user এর জন্য একটাই, সারাজীবন</span>
   <span class="k">private</span> items = [];
 
   add(item) { <span class="k">this</span>.items.push(item); }
 }</code></pre>
   </div>
   <div>
-    <h4>Correct at scale</h4>
+    <h4>Scale এ ঠিক থাকবে</h4>
 <pre><code><span class="d">@Injectable</span>()
 <span class="k">export class</span> <span class="t">CartService</span> {
   constructor(<span class="k">private</span> db: <span class="t">Database</span>) {}
 
-  <span class="c">// state lives outside the process</span>
+  <span class="c">// state process এর বাইরে থাকে</span>
   add(userId, item) {
     <span class="k">return this</span>.db.insert(userId, item);
   }
@@ -156,128 +162,125 @@ be the foundation of everything else on your roadmap:</p>
   </div>
 </div>
 
-<p>The left version leaks one user's cart into another's, and it does so <em>only under
-concurrency</em> — which is why it passes your manual testing and fails in production. The right
-version keeps no per-request state in the process.</p>
+<p>বাম দিকের code এ এক user এর cart আরেক user এর cart এ ঢুকে যায় — আর সেটা হয় <em>শুধু একসাথে
+অনেক request এলে</em>। তুমি নিজে একটা একটা করে test করলে ঠিকই দেখাবে, production এ গিয়ে ভাঙবে।
+ডান দিকের code process এর memory তে কোনো per-request state রাখে না।</p>
 
 <div class="callout mission">
-  <span class="label">Where this goes</span>
-  <p>Hold onto this: a service that keeps no state in memory is a <em class="term">stateless
-  service</em>. Stateless services are the precondition for running ten copies of your app behind
-  a <strong>load balancer</strong>, because any copy can answer any request. Everything in
-  roadmap steps 12–15 — caching, queues, horizontal scaling — assumes you got this right in step 1.
-  This is the thread running through the whole course.</p>
+  <span class="label">এটা কোথায় যাচ্ছে</span>
+  <p>মনে রাখো: যে service memory তে state রাখে না, সেটা <em class="term">stateless service</em>।
+  Stateless হলেই তুমি app এর দশটা copy একটা <strong>load balancer</strong> এর পেছনে চালাতে পারো, কারণ
+  যেকোনো copy যেকোনো request এর উত্তর দিতে পারে। Roadmap এর step 12–15 — caching, queue, horizontal
+  scaling — সব ধরে নেয় যে step 1 এ তুমি এটা ঠিক করেছ। পুরো course এর সুতা এটাই।</p>
 </div>
 
-<h2>5 · Check yourself</h2>
+<h2>5 · নিজেকে চেক করো</h2>
 
-<p>Answer before scrolling back. Getting one wrong here is worth more than getting it right by
-recognition.</p>
+<p>উপরে scroll না করে উত্তর দাও। এখানে ভুল করা, চিনে চিনে ঠিক করার চেয়ে বেশি কাজের।</p>
 
 <div class="quiz" data-answer="1">
   <div class="qnum">Check 1</div>
-  <p class="qtext">Your app crashes at boot: <code>Nest can't resolve dependencies of the
+  <p class="qtext">App চালু হতেই crash: <code>Nest can't resolve dependencies of the
   UserController (?). Please make sure that the argument UserService at index [0] is available
-  in the UserModule context.</code> You have already added <code>@Injectable()</code> to
-  <code>UserService</code>. What is missing?</p>
-  <button class="opt" data-fb="Exporting shares a provider outward with modules that import this one. The failing consumer is inside this same module, so exporting changes nothing here.">UserService is missing from the exports array</button>
-  <button class="opt" data-fb="Registration is the second, separate step. @Injectable() only makes a class eligible; the providers array is what tells the container to actually build and hold it.">UserService is missing from the providers array</button>
-  <button class="opt" data-fb="Controllers are registered in controllers, and this controller was clearly found — Nest got far enough to try constructing it and to report its name in the error.">UserController is missing from the providers array</button>
-  <button class="opt" data-fb="Decorating the parameter is not required for an ordinary class dependency. Nest resolves normal providers by their TypeScript type alone, with no token needed.">The constructor parameter is missing @Inject()</button>
+  in the UserModule context.</code> তুমি <code>UserService</code> এ <code>@Injectable()</code>
+  দিয়েছ। কী বাকি আছে?</p>
+  <button class="opt" data-fb="Export মানে বাইরের module কে ধার দেওয়া। কিন্তু যে চাইছে সে এই একই module এর ভেতরে, তাই export দিয়ে এখানে কিছু বদলাবে না।">UserService, exports array তে নেই</button>
+  <button class="opt" data-fb="Register করা আলাদা দ্বিতীয় ধাপ। @Injectable() শুধু যোগ্য বানায়; providers array তে লিখলে তবেই container সেটা বানিয়ে রাখে।">UserService, providers array তে নেই</button>
+  <button class="opt" data-fb="Controller যায় controllers array তে, আর Nest এই controller কে ঠিকই খুঁজে পেয়েছে — না হলে error এ তার নাম আসত না।">UserController, providers array এ নেই</button>
+  <button class="opt" data-fb="সাধারণ class dependency র জন্য @Inject() লাগে না। Nest শুধু TypeScript type দেখেই normal provider খুঁজে নেয়।">Constructor param এ @Inject() নেই</button>
 </div>
 
 <div class="quiz" data-answer="2">
   <div class="qnum">Check 2</div>
-  <p class="qtext"><code>OrderModule</code> needs to inject <code>UserService</code>, which is
-  declared in <code>UserModule</code>'s <code>providers</code>. What is the minimum correct
-  change?</p>
-  <button class="opt" data-fb="This creates a second, separate instance owned by OrderModule. It boots cleanly and is a genuinely dangerous bug: two instances, two caches, two versions of the truth.">Add UserService to OrderModule's own providers array</button>
-  <button class="opt" data-fb="Importing alone is not enough. A provider stays private to its own module until that module explicitly lends it out, so the import finds nothing available to take.">Have OrderModule import UserModule and nothing else</button>
-  <button class="opt" data-fb="Both halves are required. UserModule lends the provider out by exporting it, and OrderModule asks for that loan by importing the module. Neither half works on its own.">Export it from UserModule, import UserModule in OrderModule</button>
-  <button class="opt" data-fb="Modules do not share a global namespace by default. Nest does offer a @Global() decorator, but reaching for it here would hide the dependency rather than declare it.">Move UserService into the root AppModule providers array</button>
+  <p class="qtext"><code>OrderModule</code> এর <code>UserService</code> লাগবে, যেটা
+  <code>UserModule</code> এর <code>providers</code> এ আছে। সবচেয়ে ছোট সঠিক change কোনটা?</p>
+  <button class="opt" data-fb="এতে OrderModule এর নিজের আলাদা একটা instance তৈরি হয়। App ঠিকঠাক চালু হবে, কিন্তু এটা বিপজ্জনক bug: দুইটা instance, দুইটা cache, দুইটা সত্য।">OrderModule providers এ UserService যোগ করো</button>
+  <button class="opt" data-fb="শুধু import করলে হবে না। Module নিজে export না করা পর্যন্ত provider তার private থাকে, তাই import করে নেওয়ার মতো কিছু পাওয়া যায় না।">OrderModule শুধু UserModule টা import করুক</button>
+  <button class="opt" data-fb="দুই অংশই লাগে। UserModule export করে ধার দেয়, OrderModule import করে ধার নেয়। একটা ছাড়া অন্যটা কাজ করে না।">UserModule export করুক, OrderModule import</button>
+  <button class="opt" data-fb="By default module গুলো একটা global জায়গা share করে না। Nest এ @Global() আছে, কিন্তু এখানে সেটা dependency কে লুকিয়ে ফেলে, পরিষ্কার করে না।">UserService কে root AppModule এ সরিয়ে দাও</button>
 </div>
 
 <div class="quiz" data-answer="0">
   <div class="qnum">Check 3</div>
-  <p class="qtext">You store a per-user value on a private field of a default-scoped service. It
-  works perfectly in local testing. Why is it a production bug?</p>
-  <button class="opt" data-fb="Default scope is a singleton: one instance serves every concurrent request, so that field is shared across all users. Local testing sends one request at a time, which is exactly why it looks fine.">One instance serves all users, so requests overwrite each other</button>
-  <button class="opt" data-fb="Nest does not build a fresh provider per request unless you explicitly opt into REQUEST scope. If it did behave this way, the code in question would actually have been safe.">A fresh instance per request means the value is always lost</button>
-  <button class="opt" data-fb="Garbage collection is not involved at all. The field stays reachable from a long-lived singleton, so it persists — which is precisely the problem here, not a mitigation of it.">The garbage collector clears private fields between requests</button>
-  <button class="opt" data-fb="TypeScript's private modifier is indeed compile-time only, but that is unrelated. This bug appears even when nothing outside the class ever touches the field in question.">TypeScript private fields are not truly private at runtime</button>
+  <p class="qtext">Default scope এর একটা service এর private field এ তুমি per-user একটা value রাখলে।
+  Local এ পুরোপুরি ঠিক চলে। Production এ এটা bug কেন?</p>
+  <button class="opt" data-fb="Default scope মানে singleton: একটা instance একসাথে সব request সামলায়, তাই field টা সব user share করে। Local এ একবারে একটা request যায়, তাই ঠিক দেখায়।">একটা instance সবার, তাই request overwrite করে</button>
+  <button class="opt" data-fb="তুমি নিজে REQUEST scope না দিলে Nest প্রতি request এ নতুন provider বানায় না। সত্যিই এমন হলে এই code আসলে safe হতো।">প্রতি request এ নতুন instance, তাই value হারায়</button>
+  <button class="opt" data-fb="Garbage collector এর এখানে কোনো ভূমিকা নেই। Singleton সারাজীবন থাকে, তাই field টাও থাকে — সেটাই তো সমস্যা।">Garbage collector private field মুছে দেয় বারবার</button>
+  <button class="opt" data-fb="TypeScript এর private আসলেই শুধু compile-time, কিন্তু সেটা এখানে প্রাসঙ্গিক না। বাইরে থেকে কেউ field না ছুঁলেও এই bug হয়।">TypeScript private runtime এ আসলে private না</button>
 </div>
 
-<h2>6 · Retrieve it</h2>
+<h2>6 · মনে করে লেখো</h2>
 
-<p>Close the lesson in your head first. Writing it from memory is what moves this from
-<em>recognised</em> to <em>known</em>.</p>
+<p>মাথায় lesson টা বন্ধ করো। স্মৃতি থেকে লেখাই কোনো কিছুকে <em>চেনা</em> থেকে <em>জানা</em> তে নিয়ে যায়।</p>
 
 <div class="recall">
-  <p class="qtext">From memory: what are the four arrays of <code>@Module</code>, and what
-  question does each one answer?</p>
-  <textarea placeholder="No scrolling up. Rough notes are fine — the retrieval is the point."></textarea>
-  <button>Reveal model answer</button>
+  <p class="qtext">স্মৃতি থেকে: <code>@Module</code> এর চারটা array কী কী, আর প্রতিটা কোন প্রশ্নের উত্তর দেয়?</p>
+  <textarea placeholder="উপরে scroll না। এলোমেলো notes হলেও চলবে — মনে করার চেষ্টাটাই আসল।"></textarea>
+  <button>Model answer দেখাও</button>
   <div class="model" hidden>
-    <p><strong>imports</strong> — which other modules' exported providers do I need?<br>
-    <strong>controllers</strong> — which classes in here handle incoming HTTP requests?<br>
-    <strong>providers</strong> — which classes do I own, build, and inject internally?<br>
-    <strong>exports</strong> — which of my providers do I lend to modules that import me?</p>
-    <p>If you missed <code>exports</code>, that is the usual one — and it is the one that causes
-    the "can't resolve dependencies" error across module boundaries.</p>
+    <p><strong>imports</strong> — অন্য কোন module এর export করা provider আমার লাগবে?<br>
+    <strong>controllers</strong> — এখানে কোন class গুলো HTTP request ধরে?<br>
+    <strong>providers</strong> — কোন class গুলো আমার নিজের, যেগুলো আমি বানাই আর ভেতরে inject করি?<br>
+    <strong>exports</strong> — আমার কোন provider আমি ধার দিই, যারা আমাকে import করে তাদের?</p>
+    <p><code>exports</code> বাদ পড়লে চিন্তা নেই, ওটাই সবাই ভোলে — আর ওটাই module এর সীমানা পার হওয়া
+    "can't resolve dependencies" error এর কারণ।</p>
   </div>
 </div>
 
-<h2>7 · Do it for real</h2>
+<div class="done">Part A শেষ। আজকের জন্য এটুকুই যথেষ্ট। Part B weekend এ করো, অথবা এখনই যদি energy থাকে।</div>
 
-<p>Twenty minutes at the keyboard. This is the part that actually builds the skill.</p>
+<div class="part"><strong>Part B · হাতে-কলমে</strong><span>~25 min · Node + terminal</span></div>
+
+<p>এই অংশটাই আসলে skill বানায়। শুরু করার আগে terminal এ <code>node --version</code> চালিয়ে দেখো Node আছে কিনা।</p>
 
 <ol class="steps">
-  <li>Scaffold a project:
-      <code>npm i -g @nestjs/cli</code>, then <code>nest new scale-lab</code>.</li>
-  <li>Generate a feature module:
+  <li>Project বানাও:
+      <code>npm i -g @nestjs/cli</code>, তারপর <code>nest new scale-lab</code>। এই
+      <code>scale-lab</code> project টা পরের lesson এও লাগবে, মুছে ফেলো না।</li>
+  <li>একটা feature module বানাও:
       <code>nest g module users</code>, <code>nest g controller users</code>,
-      <code>nest g service users</code>. Open <code>users.module.ts</code> and find the four
-      arrays. Notice what the CLI registered for you, and what it did not.</li>
-  <li>Give <code>UsersService</code> a <code>findAll()</code> that returns a hardcoded array.
-      Inject the service into the controller and return it from a <code>@Get()</code> handler.
-      Run <code>npm run start:dev</code> and hit
-      <code>http://localhost:3000/users</code>.</li>
-  <li><strong>Break it deliberately.</strong> Delete <code>UsersService</code> from the
-      <code>providers</code> array and restart. Read the error closely — you now know exactly
-      what it means. Put it back.</li>
-  <li><strong>Break it across a boundary.</strong> <code>nest g module orders</code> and
-      <code>nest g service orders</code>. Inject <code>UsersService</code> into
-      <code>OrdersService</code>. It will fail. Fix it with <code>exports</code> +
-      <code>imports</code> until it boots.</li>
-  <li><strong>Prove the singleton.</strong> Add <code>console.log('constructed')</code> to
-      <code>UsersService</code>'s constructor. Restart, then hit the endpoint five times. Count
-      the log lines, and explain the number out loud before you read on.</li>
+      <code>nest g service users</code>। <code>users.module.ts</code> খুলে চারটা array খোঁজো। CLI কী
+      নিজে register করেছে, আর কী করেনি — খেয়াল করো।</li>
+  <li><code>UsersService</code> এ একটা <code>findAll()</code> লেখো যেটা hardcoded array return করে।
+      Service টা controller এ inject করো, আর একটা <code>@Get()</code> handler থেকে return করো।
+      <code>npm run start:dev</code> চালিয়ে browser এ <code>http://localhost:3000/users</code> খোলো।</li>
+  <li><strong>ইচ্ছা করে ভাঙো।</strong> <code>providers</code> array থেকে <code>UsersService</code>
+      মুছে restart দাও। Error টা মন দিয়ে পড়ো — এখন তুমি জানো এর মানে কী। তারপর ফেরত বসাও।</li>
+  <li><strong>সীমানা পার করে ভাঙো।</strong> <code>nest g module orders</code> আর
+      <code>nest g service orders</code>। <code>OrdersService</code> এ <code>UsersService</code>
+      inject করো। Fail করবে। <code>exports</code> + <code>imports</code> দিয়ে ঠিক করো যতক্ষণ না চালু হয়।</li>
+  <li><strong>Singleton প্রমাণ করো।</strong> <code>UsersService</code> এর constructor এ
+      <code>console.log('constructed')</code> দাও। Restart দিয়ে endpoint টা পাঁচবার hit করো। কয়টা log
+      line এলো গুনে দেখো, আর পড়ার আগে জোরে জোরে বলো কেন এই সংখ্যা।</li>
 </ol>
 
+<div class="done">Part B শেষ হলে terminal এ আমাকে বলো: কয়টা log line এলো আর কেন, আর step 5 এ কী ঠিক
+করলে। এটা দিয়েই পরের lesson ঠিক হবে।</div>
+
 <div class="callout">
-  <span class="label">Read this next</span>
+  <span class="label">এরপর পড়ো</span>
   <p><strong>Primary source:</strong>
-  <a href="https://docs.nestjs.com/providers">NestJS Docs → Overview → Providers</a>. Fifteen
-  minutes, and the best-written page in the whole framework. Then skim
-  <a href="https://docs.nestjs.com/fundamentals/injection-scopes">Injection Scopes</a> for the
-  singleton claim in section 4. Full list in <a href="../RESOURCES.md">RESOURCES.md</a>.</p>
+  <a href="https://docs.nestjs.com/providers">NestJS Docs → Overview → Providers</a>। পনেরো মিনিট,
+  পুরো framework এর সবচেয়ে ভালো লেখা page। তারপর section 4 এর singleton এর কথার জন্য
+  <a href="https://docs.nestjs.com/fundamentals/injection-scopes">Injection Scopes</a> এ চোখ বুলাও।
+  পুরো list <a href="../RESOURCES.md">RESOURCES.md</a> এ।</p>
 </div>
 
 <div class="callout">
-  <span class="label">Ask me</span>
-  <p>I am your teacher for this course, not just the author of this page. If step 5 fails in a way
-  the error message does not explain, if decorators still feel like magic, or if you want the
-  Express equivalent of anything here spelled out — <strong>ask me directly in the terminal.</strong>
-  Confusion carried into lesson 2 compounds.</p>
+  <span class="label">আমাকে জিজ্ঞেস করো</span>
+  <p>আমি এই course এ তোমার teacher, শুধু এই page এর লেখক না। Step 5 যদি এমনভাবে fail করে যেটা error
+  message বোঝায় না, decorator যদি এখনো জাদু মনে হয়, বা কোনো কিছুর Express version দেখতে চাও —
+  <strong>সরাসরি terminal এ আমাকে জিজ্ঞেস করো।</strong> বাংলা, Banglish, English — যেভাবে সুবিধা।
+  না বুঝে lesson 2 তে গেলে সেই গিট্টু বাড়তেই থাকে।</p>
 </div>
 
 <nav class="footnav">
-  <p><strong>Where you are:</strong> step 1 of 16 on the roadmap in
-  <a href="../NOTES.md">NOTES.md</a>.</p>
+  <p><strong>তুমি কোথায়:</strong> roadmap এর step 1 of 16, <a href="../NOTES.md">NOTES.md</a> এ।</p>
   <ul>
-    <li>Reference · <a href="../reference/0001-nestjs-di-cheatsheet.html">NestJS DI &amp; Modules Cheat Sheet</a> — print this one.</li>
+    <li>Reference · <a href="../reference/0001-nestjs-di-cheatsheet.html">NestJS DI &amp; Modules Cheat Sheet</a> — এটা print করে রাখো।</li>
     <li>Mission · <a href="../MISSION.md">MISSION.md</a></li>
-    <li>Next · <em>Lesson 02: Relational thinking — unlearning MongoDB.</em> Not written yet; say the word.</li>
+    <li>Next · <a href="0002-incident-cpu-low-but-slow.html">Incident 01: CPU 12%, তবু API slow</a> — Part B শেষ করার পর।</li>
   </ul>
 </nav>
 

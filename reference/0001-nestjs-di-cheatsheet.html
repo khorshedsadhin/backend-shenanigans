@@ -1,62 +1,51 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Reference · NestJS DI &amp; Modules</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600&display=swap">
 <link rel="stylesheet" href="../assets/course.css">
-<style>
-  /* Reference sheets are denser than lessons: full width, tighter rhythm. */
-  .sheet > * { max-width: 100%; }
-  body { padding-top: 2.5rem; }
-  h2 { margin-top: 2rem; }
-  table { border-collapse: collapse; width: 100%; font-size: .88rem; margin: 0 0 1.4rem; }
-  th, td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
-  th { font-family: ui-monospace, Consolas, monospace; font-size: .7rem; letter-spacing: .1em;
-       text-transform: uppercase; color: var(--ink-faint); font-weight: 500; }
-  td code { white-space: nowrap; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-  @media (max-width: 800px) { .grid2 { grid-template-columns: 1fr; } }
-  .err { font-size: .8rem; }
-</style>
 </head>
-<body>
+<body class="ref">
 <main class="sheet">
 
 <header class="masthead">
-  <p class="eyebrow">Reference 01 · Companion to <a href="../lessons/0001-the-di-container.html">Lesson 01</a></p>
+  <p class="eyebrow">Reference 01 · <a href="../lessons/0001-the-di-container.html">Lesson 01</a> এর সাথী</p>
   <h1>NestJS DI &amp; Modules</h1>
-  <p class="standfirst">The wiring rules, the decorators, and the error messages — on one page.</p>
+  <p class="standfirst">Wiring এর নিয়ম, decorator, আর error message — এক page এ।</p>
 </header>
 
-<h2>The four module arrays</h2>
+<h2>Module এর চারটা array</h2>
 
 <table>
-  <thead><tr><th>Array</th><th>Answers</th><th>Gotcha</th></tr></thead>
+  <thead><tr><th>Array</th><th>কোন প্রশ্নের উত্তর</th><th>সাবধান</th></tr></thead>
   <tbody>
     <tr><td><code>imports</code></td>
-        <td>Which other <em>modules</em> do I need?</td>
-        <td>Takes modules, never providers.</td></tr>
+        <td>অন্য কোন <em>module</em> আমার লাগবে?</td>
+        <td>শুধু module নেয়, কখনো provider না।</td></tr>
     <tr><td><code>controllers</code></td>
-        <td>Which classes handle HTTP here?</td>
-        <td>Controllers are never put in <code>providers</code>, and are never exported.</td></tr>
+        <td>এখানে কোন class HTTP ধরে?</td>
+        <td>Controller কখনো <code>providers</code> এ যায় না, export ও হয় না।</td></tr>
     <tr><td><code>providers</code></td>
-        <td>What do I own and inject internally?</td>
-        <td>Registration happens here — <code>@Injectable()</code> alone does nothing.</td></tr>
+        <td>কী আমার নিজের, ভেতরে inject হয়?</td>
+        <td>Register এখানেই হয় — শুধু <code>@Injectable()</code> দিয়ে কিছু হয় না।</td></tr>
     <tr><td><code>exports</code></td>
-        <td>What do I lend to modules that import me?</td>
-        <td>Must also appear in <code>providers</code>. Omitting this is the #1 cross-module bug.</td></tr>
+        <td>যারা আমাকে import করে, তাদের কী ধার দিই?</td>
+        <td><code>providers</code> এও থাকতে হবে। এটা বাদ পড়াই cross-module bug নম্বর ১।</td></tr>
   </tbody>
 </table>
 
 <div class="callout">
-  <span class="label">The one rule</span>
-  <p>A provider is <strong>private to its module</strong> unless exported. Sharing needs
-  <em>both</em> halves: the owner <code>exports</code> it, the consumer <code>imports</code>
-  the owning module.</p>
+  <span class="label">একটাই নিয়ম</span>
+  <p>Provider <strong>তার module এর private</strong>, export না করা পর্যন্ত। Share করতে
+  <em>দুটোই</em> লাগে: মালিক <code>exports</code> করে, যে চায় সে মালিক module কে
+  <code>imports</code> করে।</p>
 </div>
 
-<h2>Canonical shapes</h2>
+<h2>Standard shape</h2>
 
 <div class="grid2">
 <div>
@@ -94,7 +83,7 @@
 
 <div class="grid2">
 <div>
-<h3>Module that keeps a service private</h3>
+<h3>Service private রাখে এমন module</h3>
 <pre><code><span class="d">@Module</span>({
   controllers: [<span class="t">UsersController</span>],
   providers:   [<span class="t">UsersService</span>],
@@ -102,87 +91,88 @@
 <span class="k">export class</span> <span class="t">UsersModule</span> {}</code></pre>
 </div>
 <div>
-<h3>Module that shares it</h3>
+<h3>Service share করে এমন module</h3>
 <pre><code><span class="d">@Module</span>({
   controllers: [<span class="t">UsersController</span>],
   providers:   [<span class="t">UsersService</span>],
-  exports:     [<span class="t">UsersService</span>],   <span class="c">// lend</span>
+  exports:     [<span class="t">UsersService</span>],   <span class="c">// ধার দাও</span>
 })
 <span class="k">export class</span> <span class="t">UsersModule</span> {}
 
 <span class="d">@Module</span>({
-  imports:   [<span class="t">UsersModule</span>],      <span class="c">// borrow</span>
+  imports:   [<span class="t">UsersModule</span>],      <span class="c">// ধার নাও</span>
   providers: [<span class="t">OrdersService</span>],
 })
 <span class="k">export class</span> <span class="t">OrdersModule</span> {}</code></pre>
 </div>
 </div>
 
-<h2>Injection scopes</h2>
+<h2>Injection scope</h2>
 
 <table>
-  <thead><tr><th>Scope</th><th>Instances</th><th>Use when</th></tr></thead>
+  <thead><tr><th>Scope</th><th>কয়টা instance</th><th>কখন ব্যবহার</th></tr></thead>
   <tbody>
     <tr><td><code>DEFAULT</code></td>
-        <td>One, shared app-wide, for the app's whole lifetime.</td>
-        <td><strong>Almost always.</strong> Requires stateless services. The default; do not declare it.</td></tr>
+        <td>একটা, পুরো app share করে, app যতক্ষণ চলে।</td>
+        <td><strong>প্রায় সবসময়।</strong> Service কে stateless হতে হবে। এটাই default; লিখতে হয় না।</td></tr>
     <tr><td><code>REQUEST</code></td>
-        <td>One per incoming request, then garbage-collected.</td>
-        <td>You genuinely need per-request state in the provider (e.g. multi-tenant context). Costs latency, and the scope <em>bubbles up</em> to every consumer.</td></tr>
+        <td>প্রতিটা request এ একটা, তারপর garbage collect।</td>
+        <td>Provider এ সত্যিই per-request state লাগলে (যেমন multi-tenant context)। Latency বাড়ায়, আর
+        scope টা উপরে <em>ছড়িয়ে পড়ে</em> — যারা এটা inject করে, তারাও REQUEST হয়ে যায়।</td></tr>
     <tr><td><code>TRANSIENT</code></td>
-        <td>A fresh, dedicated instance per consumer.</td>
-        <td>Rare. Typically loggers that must know who injected them.</td></tr>
+        <td>যে inject করে, প্রত্যেকে নিজের নতুন instance পায়।</td>
+        <td>কদাচিৎ। সাধারণত logger, যার জানা দরকার কে তাকে inject করেছে।</td></tr>
   </tbody>
 </table>
 
 <pre><code><span class="d">@Injectable</span>({ scope: <span class="t">Scope</span>.REQUEST })
 <span class="k">export class</span> <span class="t">TenantContext</span> {}</code></pre>
 
-<p><a href="https://docs.nestjs.com/fundamentals/injection-scopes">Docs → Injection Scopes</a>.
-Default scope is a singleton, so <strong>never store per-request state on a provider field.</strong></p>
+<p><a href="https://docs.nestjs.com/fundamentals/injection-scopes">Docs → Injection Scopes</a>।
+Default scope singleton, তাই <strong>provider এর field এ কখনো per-request state রেখো না।</strong></p>
 
 <h2>Error decoder</h2>
 
 <table class="err">
-  <thead><tr><th>Message</th><th>It means</th><th>Fix</th></tr></thead>
+  <thead><tr><th>Message</th><th>মানে</th><th>Fix</th></tr></thead>
   <tbody>
     <tr>
       <td><code>Nest can't resolve dependencies of the X (?). ... argument Y at index [0] is available in the Z context</code></td>
-      <td>Nest built <code>X</code>, needed a <code>Y</code>, and could not find one registered in module <code>Z</code>.</td>
-      <td>Add <code>Y</code> to <code>Z</code>'s <code>providers</code> — or, if <code>Y</code> belongs to another module, <code>export</code> it there and <code>import</code> that module into <code>Z</code>.</td>
+      <td>Nest <code>X</code> বানাতে গিয়ে <code>Y</code> চেয়েছে, কিন্তু module <code>Z</code> এ কোনো registered <code>Y</code> পায়নি।</td>
+      <td><code>Y</code> কে <code>Z</code> এর <code>providers</code> এ দাও — অথবা <code>Y</code> অন্য module এর হলে সেখানে <code>export</code> করো আর ওই module কে <code>Z</code> তে <code>import</code> করো।</td>
     </tr>
     <tr>
-      <td><code>... argument at index [0] is available in the ... context</code> but the argument name shows as <code>Object</code> or <code>undefined</code></td>
-      <td>The type metadata was never emitted, usually a circular import between two files.</td>
-      <td>Break the cycle, or use <code>forwardRef(() =&gt; OtherModule)</code> on both sides as a last resort.</td>
+      <td><code>... argument at index [0] is available in the ... context</code> কিন্তু argument এর নাম <code>Object</code> বা <code>undefined</code> দেখায়</td>
+      <td>Type metadata তৈরিই হয়নি, সাধারণত দুইটা file একে অপরকে import করছে (circular import)।</td>
+      <td>Cycle ভাঙো, অথবা শেষ উপায় হিসেবে দুই দিকেই <code>forwardRef(() =&gt; OtherModule)</code>।</td>
     </tr>
     <tr>
-      <td>Boots fine, but a shared cache or counter behaves oddly.</td>
-      <td>The provider was listed in two modules' <code>providers</code>, so two instances exist.</td>
-      <td>Declare it in exactly one module, <code>export</code> it, and <code>import</code> that module everywhere else.</td>
+      <td>ঠিকঠাক চালু হয়, কিন্তু shared cache বা counter উল্টাপাল্টা আচরণ করে।</td>
+      <td>Provider দুইটা module এর <code>providers</code> এ লেখা, তাই দুইটা instance।</td>
+      <td>ঠিক একটা module এ declare করো, <code>export</code> করো, আর বাকি সব জায়গায় সেই module <code>import</code> করো।</td>
     </tr>
     <tr>
-      <td>One user sees another user's data, only under load.</td>
-      <td>Per-request state stored on a singleton provider's field.</td>
-      <td>Move the state out: pass it as a method argument, or persist it in the database or cache.</td>
+      <td>এক user আরেক user এর data দেখে, শুধু load এর সময়।</td>
+      <td>Singleton provider এর field এ per-request state রাখা।</td>
+      <td>State বাইরে সরাও: method argument হিসেবে পাঠাও, অথবা database বা cache এ রাখো।</td>
     </tr>
   </tbody>
 </table>
 
-<h2>CLI, worth memorising</h2>
+<h2>CLI, মুখস্থ রাখার মতো</h2>
 
-<pre><code>nest new &lt;app&gt;                <span class="c"># scaffold a project</span>
-nest g module users           <span class="c"># module (auto-imported into AppModule)</span>
-nest g controller users       <span class="c"># controller (auto-registered in UsersModule)</span>
-nest g service users          <span class="c"># provider  (auto-registered in UsersModule)</span>
-nest g resource users         <span class="c"># all of the above + CRUD + DTOs</span>
+<pre><code>nest new &lt;app&gt;                <span class="c"># project বানাও</span>
+nest g module users           <span class="c"># module (AppModule এ নিজে import হয়)</span>
+nest g controller users       <span class="c"># controller (UsersModule এ নিজে register হয়)</span>
+nest g service users          <span class="c"># provider  (UsersModule এ নিজে register হয়)</span>
+nest g resource users         <span class="c"># উপরের সব + CRUD + DTO</span>
 npm run start:dev             <span class="c"># watch mode</span></code></pre>
 
 <div class="callout mission">
-  <span class="label">Carry this forward</span>
-  <p><strong>Singleton by default ⇒ services must be stateless ⇒ you can run N copies behind a
-  load balancer.</strong> That chain is the reason this reference sheet sits at the front of a
-  course about scale. See <a href="../MISSION.md">MISSION.md</a>.</p>
+  <span class="label">এটা সাথে রাখো</span>
+  <p><strong>Default এ singleton ⇒ service কে stateless হতে হবে ⇒ তাহলে load balancer এর পেছনে N টা
+  copy চালানো যায়।</strong> এই শিকলের জন্যই scale নিয়ে একটা course এর একদম শুরুতে এই sheet।
+  দেখো <a href="../MISSION.md">MISSION.md</a>।</p>
 </div>
 
 <nav class="footnav">
