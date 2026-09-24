@@ -21,10 +21,30 @@
        <button>Reveal model answer</button>
        <div class="model" hidden>...</div>
      </div>
+
+   UI text follows <html lang>: "bn" gives Bangla, anything else English.
    ============================================================ */
 
 (function () {
   'use strict';
+
+  var STRINGS = {
+    en: {
+      correct: 'Correct. ',
+      wrong: 'Not quite. ',
+      answer: 'The answer: ',
+      tryFirst: 'Try writing something first — then click again',
+      shown: 'Model answer shown'
+    },
+    bn: {
+      correct: 'ঠিক। ',
+      wrong: 'হয়নি। ',
+      answer: 'সঠিক উত্তর: ',
+      tryFirst: 'আগে কিছু লেখো — তারপর আবার ক্লিক করো',
+      shown: 'Model answer দেখানো হলো'
+    }
+  };
+  var T = STRINGS[document.documentElement.lang] || STRINGS.en;
 
   function initQuiz(quiz) {
     var answer = parseInt(quiz.getAttribute('data-answer'), 10);
@@ -45,13 +65,13 @@
         });
         if (i !== answer) opt.classList.add('wrong');
 
-        var verdict = i === answer ? 'Correct. ' : 'Not quite. ';
+        var verdict = i === answer ? T.correct : T.wrong;
         fb.innerHTML = '<strong>' + verdict + '</strong>' + (opt.getAttribute('data-fb') || '');
 
         // On a miss, also surface why the real answer is right.
         if (i !== answer) {
           var right = opts[answer].getAttribute('data-fb');
-          if (right) fb.innerHTML += '<br><br><strong>The answer: </strong>' + right;
+          if (right) fb.innerHTML += '<br><br><strong>' + T.answer + '</strong>' + right;
         }
         fb.hidden = false;
       });
@@ -68,12 +88,12 @@
       // Desirable difficulty: refuse to reveal until they have actually tried.
       if (ta && ta.value.trim().length < 15 && !box.dataset.nagged) {
         box.dataset.nagged = '1';
-        btn.textContent = 'Try writing something first — then click again';
+        btn.textContent = T.tryFirst;
         return;
       }
       model.hidden = false;
       btn.disabled = true;
-      btn.textContent = 'Model answer shown';
+      btn.textContent = T.shown;
     });
   }
 

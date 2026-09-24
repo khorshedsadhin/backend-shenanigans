@@ -33,6 +33,12 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Bangla lessons. Nirmala UI ships with Windows, so text still renders offline. */
+html[lang="bn"] body {
+  font-family: "Noto Serif Bengali", "Nirmala UI", "Iowan Old Style", Georgia, serif;
+  line-height: 1.85;
+}
+
 .sheet { max-width: 60rem; margin: 0 auto; }
 .sheet > * { max-width: var(--measure); }
 .sheet > .wide, .sheet > figure { max-width: 100%; }
@@ -142,6 +148,33 @@ ol.steps > li { margin-bottom: .9rem; }
 .check li::before {
   content: "☐"; position: absolute; left: 0; color: var(--ink-faint); font-size: 1.1rem;
 }
+
+/* ---------- part marker: splits a lesson into separate sittings ---------- */
+.part {
+  margin: 3.5rem 0 1rem; padding: .7rem 1rem; border: 1px solid var(--ink);
+  border-radius: 4px; display: flex; justify-content: space-between; gap: 1rem;
+}
+.part strong { font-size: 1.1rem; }
+.part span { font-family: ui-monospace, Consolas, monospace; font-size: .8rem; color: var(--ink-soft); }
+.done {
+  margin: 2rem 0; padding: .8rem 1rem; border: 1px dashed var(--good);
+  background: var(--good-bg); color: var(--good); font-size: .95rem;
+}
+
+/* ---------- reference sheets: <body class="ref">, denser than lessons ---------- */
+body.ref { padding-top: 2.5rem; }
+.ref .sheet > * { max-width: 100%; }
+.ref h2 { margin-top: 2rem; }
+.ref table { border-collapse: collapse; width: 100%; font-size: .88rem; margin: 0 0 1.4rem; }
+.ref th, .ref td { text-align: left; padding: .5rem .7rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+.ref th {
+  font-family: ui-monospace, Consolas, monospace; font-size: .7rem; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-faint); font-weight: 500;
+}
+.ref td code { white-space: nowrap; }
+.ref .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 800px) { .ref .grid2 { grid-template-columns: 1fr; } }
+.ref .err { font-size: .8rem; }
 
 /* ---------- footer nav ---------- */
 .footnav { margin-top: 4rem; padding-top: 1.2rem; border-top: 1px solid var(--rule); font-size: .9rem; color: var(--ink-soft); }
