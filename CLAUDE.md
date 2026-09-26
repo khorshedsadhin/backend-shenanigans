@@ -13,6 +13,11 @@ Invoke the skill with `/teach` before doing teaching work — it carries the ped
 not repeat. Format specs live in `C:\Users\khorshedsadhin\.claude\skills\teach\`
 (`MISSION-FORMAT.md`, `LEARNING-RECORD-FORMAT.md`, `RESOURCES-FORMAT.md`, `GLOSSARY-FORMAT.md`).
 
+## Related projects
+
+The `scale-lab` project (hands-on practice code, separate from this teaching workspace) lives at
+`D:\Backend Matery\scale-lab`.
+
 ## Read-first order
 
 State is spread across files that only make sense together. Before authoring anything:
