@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lesson 03 · একটা Fact, এক জায়গায়</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600&display=swap">
+<link rel="stylesheet" href="../assets/course.css">
+<script src="../assets/quiz.js" defer></script>
+</head>
+<body>
+<main class="sheet">
+
+<header class="masthead">
+  <p class="eyebrow">Lesson 03 · Roadmap step 2 of 16 · তিন বসায় শেষ</p>
+  <h1>একটা Fact, এক জায়গায়</h1>
+  <p class="standfirst">MongoDB তোমাকে শিখিয়েছে সব কিছু একটা document এর ভেতরে ঢুকিয়ে রাখতে।
+  PostgreSQL এর পুরো নিয়মটা তার উল্টো — আর এই উল্টোটাই তোমার mission এর সবচেয়ে বড় ফাঁক।</p>
+</header>
+
+<div class="callout mission">
+  <span class="label">কেন এটা এখন</span>
+  <p>তোমার <a href="../MISSION.md">mission</a> বলে: SQL প্রায় শূন্য, আর relational thinking
+  ground up থেকে বানাতে হবে। Roadmap এর step 4 (joins), step 7 (<code>EXPLAIN ANALYZE</code>) আর
+  শেষের interview round — তিনটাই এই একটা schema পড়ে। <strong>ভুল schema কে পরে index দিয়ে ঠিক করা
+  যায় না।</strong> তাই ORM এর আগে, Nest এর সাথে connect করার আগে, এই lesson।</p>
+</div>
+
+<p>তিন ভাগ। <strong>Part A</strong> শুধু পড়া আর quiz, কোনো setup নেই, ~২০ মিনিট।
+<strong>Part B</strong> Docker Desktop বসানো আর Postgres চালু করা, ~২৫ মিনিট (একবারই, সারা course এ
+কাজে লাগবে)। <strong>Part C</strong> নিজের হাতে table বানানো আর ইচ্ছা করে ভাঙা, ~৩০ মিনিট।
+আজ শুধু Part A করলেই যথেষ্ট।</p>
+
+<h2>0 · আগে মনে করো</h2>
+
+<p>Lesson 01 তুমি blank file থেকে আবার বানিয়েছ — ওটা আসল কাজ ছিল। শুরু করার আগে একটা জিনিস
+স্মৃতি থেকে বের করো। ৫ মিনিট।</p>
+
+<div class="recall">
+  <p class="qtext">স্মৃতি থেকে: default scope এর একটা Nest service কেন নিজের field এ per-user
+  data রাখতে পারে না? উত্তরে "singleton" শব্দটা ব্যবহার করো।</p>
+  <textarea placeholder="Lesson 01 খুলবে না। নিজের ভাষায় দুই-তিন লাইন।"></textarea>
+  <button>Model answer দেখাও</button>
+  <div class="model" hidden>
+    <p>Default scope মানে <strong>singleton</strong> — container app চালু হওয়ার সময় একবার object
+    বানায়, আর সেই একটা object ই সব request সামলায়, একসাথে। তাই service এর field টা সব user share
+    করে; এক user এর data আরেক user এর response এ চলে যায়। State process এর বাইরে — database এ —
+    রাখলে এটা হয় না।</p>
+    <p>যদি এটা লিখতে গিয়ে আটকে যাও বা "singleton" কথাটা মুখে না আসে, তাহলে এখনই ১৫ মিনিট দিয়ে
+    <a href="https://docs.nestjs.com/providers">Providers</a> আর
+    <a href="https://docs.nestjs.com/fundamentals/injection-scopes">Injection Scopes</a> পড়ে ফেলো —
+    lesson 01 এ যেগুলো পড়া হয়নি। Code চলা আর docs এর ভাষায় বলতে পারা দুইটা আলাদা জিনিস, আর
+    interview টা দ্বিতীয়টা দিয়েই হয়।</p>
+  </div>
+</div>
+
+<div class="part"><strong>Part A · ধারণা</strong><span>~20 min · no setup</span></div>
+
+<h2>1 · তোমার Mongo অভ্যাসটা কী ছিল</h2>
+
+<p>তোমার Express + Mongo project এ একটা order সম্ভবত এরকম দেখতে ছিল — সব কিছু এক জায়গায়,
+একবার query করলেই পুরোটা পাওয়া যায়:</p>
+
+<pre><code><span class="c">// mongo — একটা order document</span>
+{
+  _id: <span class="s">"665f..."</span>,
+  user: { name: <span class="s">"Khorshed"</span>, email: <span class="s">"k@mail.com"</span> },
+  items: [
+    { product: <span class="s">"Keyboard"</span>, price: <span class="t">2500</span>, quantity: <span class="t">1</span> },
+    { product: <span class="s">"Mouse"</span>,    price: <span class="t">800</span>,  quantity: <span class="t">2</span> }
+  ],
+  placedAt: <span class="s">"2026-09-20T10:00:00Z"</span>
+}</code></pre>
+
+<p>এটা পড়তে দ্রুত, লিখতে আরাম। এখন একটা বাস্তব ঘটনা ঘটাও: <strong>user তার email বদলালো।</strong></p>
+
+<p>তার ১০,০০০ order document এ email টা copy হয়ে আছে। মানে একই সত্যি ১০,০০০ জায়গায় লেখা।
+এখন তোমাকে ১০,০০০ জায়গায় update করতে হবে, আর তার মাঝপথে server restart হলে কিছু document এ পুরনো
+email, কিছুতে নতুন। Database এর ভাষায় এটার নাম <em class="term">update anomaly</em>।</p>
+
+<p>পুরো relational thinking এর এক লাইনের সারমর্ম এটাই:</p>
+
+<div class="callout">
+  <span class="label">মূল নিয়ম</span>
+  <p><strong>একটা fact, এক জায়গায়।</strong> User এর email একটা fact — সেটা থাকবে user এর
+  এক জায়গায়, আর বাকি সবাই সেই জায়গাটাকে <em>দেখাবে</em>, copy করবে না। এই copy সরানোর কাজটার নাম
+  <em class="term">normalisation</em>।</p>
+</div>
+
+<h2>2 · Row, column, আর type যেটা আসলেই জোর করে</h2>
+
+<p>Postgres এ data থাকে <em class="term">table</em> এ। Table এর প্রতিটা <em class="term">row</em>
+একটা জিনিস (একজন user, একটা order)। প্রতিটা <em class="term">column</em> সেই জিনিসের একটা fact,
+আর প্রতিটা column এর একটা <strong>declared type</strong> আছে।</p>
+
+<p>এটাই Mongo থেকে প্রথম বড় পার্থক্য। Mongo তে একটা field এ আজ string, কাল number রাখা যায় —
+কেউ আটকাবে না, ভুলটা ধরা পড়বে ছয় মাস পর production এ। Postgres এ column এর type একটা
+<em>প্রতিশ্রুতি যেটা database নিজে পাহারা দেয়</em>: <code>integer</code> column এ
+<code>"hello"</code> ঢোকানোর চেষ্টা করলে insert টাই fail করে
+(<a href="https://www.postgresql.org/docs/current/datatype.html">Data Types</a>)।</p>
+
+<p>এখনকার জন্য এই কয়টা type ই যথেষ্ট:</p>
+
+<table>
+  <thead><tr><th>Type</th><th>কীসের জন্য</th><th>মনে রাখার কথা</th></tr></thead>
+  <tbody>
+    <tr><td><code>text</code></td>
+        <td>নাম, email, যেকোনো string</td>
+        <td>Postgres এ <code>varchar(n)</code> এর চেয়ে দ্রুত না — কারণ ছাড়া length limit দিও না।</td></tr>
+    <tr><td><code>bigint</code></td>
+        <td>id, count</td>
+        <td><code>integer</code> ২১৪ কোটিতে শেষ। Id এর জন্য <code>bigint</code> ই নাও।</td></tr>
+    <tr><td><code>numeric(10,2)</code></td>
+        <td>টাকা, দাম</td>
+        <td>টাকার জন্য <strong>কখনো</strong> <code>float</code> না — <code>0.1 + 0.2</code> ঠিক হয় না।</td></tr>
+    <tr><td><code>timestamptz</code></td>
+        <td>কখন ঘটলো</td>
+        <td>সবসময় এটা, <code>timestamp</code> না। ওটাতে timezone তথ্য হারায়।</td></tr>
+    <tr><td><code>boolean</code></td>
+        <td>হ্যাঁ/না</td>
+        <td><code>true</code>, <code>false</code>, আর <code>null</code> — তিনটা অবস্থা।</td></tr>
+  </tbody>
+</table>
+
+<h2>3 · দুইটা key, দুইটা আলাদা কাজ</h2>
+
+<p>Table গুলোকে জোড়া লাগায় key। মাত্র দুইটা ধারণা, কিন্তু পুরো schema design এই দুইটার উপরে
+দাঁড়ানো (<a href="https://www.postgresql.org/docs/current/ddl-constraints.html">Constraints</a>)।</p>
+
+<p><strong><em class="term">Primary key</em></strong> — যে column টা একটা row কে নাম দেয়।
+প্রতিটা row এর আলাদা, আর কখনো <code>null</code> না। Mongo র <code>_id</code> এর সমান, কিন্তু তুমি
+নিজে ঠিক করো এটা কোন column।</p>
+
+<p><strong><em class="term">Foreign key</em></strong> — যে column টা অন্য table এর primary key
+এর দিকে <em>আঙুল তোলে</em>। আর এখানেই Postgres এর আসল ক্ষমতা:
+<strong>database এমন কোনো row ঢুকতেই দেয় না যার আঙুল শূন্যের দিকে।</strong> নেই এমন user এর
+order তৈরি করা যাবে না — application এ if লিখে না, database এ নিয়ম লিখে।</p>
+
+<p>Mongo তে এই পাহারাটা নেই। তুমি <code>userId</code> রাখতে পারো, কিন্তু সেই user মুছে গেলে
+document টা একটা <strong>orphan</strong> হয়ে বসে থাকে, আর টের পাওয়া যায় যেদিন কেউ ওটা পড়তে যায়।</p>
+
+<h2>4 · One-to-many: আঙুল সবসময় "many" দিক থেকে ওঠে</h2>
+
+<p>একজন user এর অনেক order। Order টা user এর দিকে আঙুল তোলে, উল্টোটা না — কারণ "many" দিকের
+প্রতিটা row এর মালিক একজন, কিন্তু "one" দিকে কতজন থাকবে তার সংখ্যা আগে থেকে জানা নেই।</p>
+
+<table>
+  <thead><tr><th>users</th><th>orders</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>id</code> = 1 · <code>email</code> = k@mail.com<br>
+          <code>id</code> = 2 · <code>email</code> = r@mail.com</td>
+      <td><code>id</code> = 10 · <code>user_id</code> = <strong>1</strong><br>
+          <code>id</code> = 11 · <code>user_id</code> = <strong>1</strong><br>
+          <code>id</code> = 12 · <code>user_id</code> = <strong>2</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Email টা <code>orders</code> এ একবারও নেই। User 1 email বদলালে <em>একটা</em> row বদলায়,
+আর তার দশ হাজার order সঙ্গে সঙ্গে নতুন email দেখায়। Section 1 এর সমস্যাটা এভাবেই শেষ হলো।</p>
+
+<h2>5 · Many-to-many: তৃতীয় কোনো রাস্তা নেই</h2>
+
+<p>একটা order এ অনেক product, আর একটা product অনেক order এ। এখন আঙুল কোন দিকে তুলবে?
+<strong>কোনো দিকেই না — তৃতীয় একটা table লাগবে।</strong> তার নাম
+<em class="term">join table</em>: তার প্রতিটা row মানে "এই order এর সাথে এই product এর একটা সম্পর্ক"।</p>
+
+<pre><code>orders          order_items                 products
+id=10  ◄──── order_id=10, product_id=7,  ────►  id=7  Keyboard
+              quantity=1
+id=10  ◄──── order_id=10, product_id=9,  ────►  id=9  Mouse
+              quantity=2</code></pre>
+
+<p>খেয়াল করো <code>quantity</code> কোথায় বসেছে। ওটা product এর fact না (Mouse এর নিজের কোনো
+quantity নেই), order এর fact ও না (order এর প্রতিটা product এর আলাদা quantity)। ওটা
+<strong>সম্পর্কটার</strong> fact — তাই ওটার জায়গা join table এ। এটা ধরতে পারলে many-to-many
+তোমার হয়ে গেছে।</p>
+
+<p>Mongo র অভ্যাস এখানে টানবে — "একটা array column এ product গুলো রেখে দিই"। Postgres এ array
+type আছে, কিন্তু এই কাজে ওটা ভুল: array এর ভেতরের value তে foreign key খাটে না, মানে নেই এমন
+product order এ ঢুকে যেতে পারবে। <strong>Array হলো Mongo অভ্যাসের ছদ্মবেশ।</strong></p>
+
+<h2>6 · কী পেলাম, কী দিলাম</h2>
+
+<div class="compare wide">
+  <div>
+    <h4>Mongo: এক document</h4>
+<pre><code>{ user: { email }, items: [...] }
+
+<span class="c">// পড়া: এক query, দ্রুত</span>
+<span class="c">// email বদল: ১০,০০০ জায়গায়</span>
+<span class="c">// ভুল data: কেউ আটকায় না</span></code></pre>
+  </div>
+  <div>
+    <h4>Postgres: চারটা table</h4>
+<pre><code>users · orders · order_items · products
+
+<span class="c">// পড়া: join লাগে</span>
+<span class="c">// email বদল: ১ জায়গায়</span>
+<span class="c">// ভুল data: database refuse করে</span></code></pre>
+  </div>
+</div>
+
+<p>দাম দিতে হচ্ছে <strong>join</strong> — পড়ার সময় টেবিল জোড়া লাগানোর কাজ। সেটা roadmap এর
+step 4, আর সেটা যখন ধীর হয় তখন step 7 এর index। কিন্তু <em>ভুল schema</em> কে index দিয়ে ঠিক করা
+যায় না — duplicate data থেকে জন্মানো bug কোনো index দূর করে না। এজন্যই schema আগে।</p>
+
+<h2>7 · নিজেকে চেক করো</h2>
+
+<p>উপরে scroll না করে উত্তর দাও।</p>
+
+<div class="quiz" data-answer="0">
+  <div class="qnum">Check 1</div>
+  <p class="qtext">User এর email ১০,০০০ order এ copy হয়ে আছে, আর user email বদলালো।
+  Relational design এ এই সমস্যাটা কীভাবে একেবারে <em>থাকেই না</em>?</p>
+  <button class="opt" data-fb="এটাই normalisation: fact টা users এর এক row এ থাকে, orders শুধু user_id দিয়ে দেখায়। এক জায়গা বদলালেই সবাই নতুন email দেখে।">Email শুধু users এ, orders রাখে শুধু user_id</button>
+  <button class="opt" data-fb="এটা সমস্যা সরায় না, সমস্যাটা মেনে নিয়ে কাজ বাড়ায়। মাঝপথে fail করলে কিছু row পুরনো, কিছু নতুন — inconsistent।">প্রতিটা order row তে email আবার update করো</button>
+  <button class="opt" data-fb="Unique উল্টো ক্ষতি করবে: একই user এর দুইটা order তখন একই email রাখতেই পারবে না। Copy টাই আসল সমস্যা, copy র নিয়ম না।">Orders এর email column টা unique করে দাও</button>
+  <button class="opt" data-fb="Index পড়া দ্রুত করে, data ঠিক রাখে না। দশ হাজার copy index করলে দশ হাজার copy ই থাকে, শুধু দ্রুত ভুল পাওয়া যায়।">Orders এর email column এ একটা index বসাও</button>
+</div>
+
+<div class="quiz" data-answer="1">
+  <div class="qnum">Check 2</div>
+  <p class="qtext"><code>orders.user_id</code> এ <code>references users(id)</code> লেখা আছে।
+  এই constraint টা ঠিক কোন জিনিসটা হতে দেয় <em>না</em>?</p>
+  <button class="opt" data-fb="One-to-many র পুরো মানেই এটা: একজন user এর যত order চাই। Foreign key সংখ্যা নিয়ে কিছু বলে না।">একই user এর একাধিক order তৈরি হওয়া</button>
+  <button class="opt" data-fb="ঠিক। users এ নেই এমন id দিলে insert টাই fail করে — orphan row database এ ঢুকতেই পারে না। Mongo তে এই পাহারাটা নেই।">নেই এমন user এর দিকে order point করা</button>
+  <button class="opt" data-fb="Copy করা তোমাকে কেউ আটকাবে না। Foreign key সম্পর্ক পাহারা দেয়, duplication না — ওটা তোমার design এর কাজ।">User এর email কে orders এ copy করে রাখা</button>
+  <button class="opt" data-fb="Null আলাদা নিয়ম: not null না লিখলে খালি user_id চলে যায়। দুইটা constraint দুইটা আলাদা কাজ করে।">Order এর user_id column খালি (null) থাকা</button>
+</div>
+
+<div class="quiz" data-answer="2">
+  <div class="qnum">Check 3</div>
+  <p class="qtext">একটা order এ তিনটা product, আর প্রতিটা product এর আলাদা quantity।
+  <code>quantity</code> column টার আসল জায়গা কোথায়?</p>
+  <button class="opt" data-fb="Order প্রতি একটা column হলে তিনটা product এর তিনটা আলাদা সংখ্যা রাখার জায়গা থাকে না। Quantity order এর fact না।">Orders table এ, order প্রতি একটা column</button>
+  <button class="opt" data-fb="Product এর নিজের কোনো quantity নেই — Mouse এর quantity প্রতিটা order এ আলাদা। এটা stock হলে আলাদা কথা, কিন্তু সেটা ভিন্ন fact।">Products table এ, product প্রতি একটা column</button>
+  <button class="opt" data-fb="ঠিক। Quantity সম্পর্কটার fact, তাই order_items এর সেই row তেই বসে যেটা এই order আর এই product কে জোড়া দেয়।">Order_items table এ, join row প্রতি একটা</button>
+  <button class="opt" data-fb="Array মানে Mongo অভ্যাস ছদ্মবেশে। Array এর ভেতরে foreign key খাটে না, তাই নেই এমন product ঢুকে যেতে পারে।">Orders table এ, একটা array column হিসেবে</button>
+</div>
+
+<h2>8 · মনে করে লেখো</h2>
+
+<div class="recall">
+  <p class="qtext">নিচের Mongo document টা relational এ ভাঙো — শুধু <strong>table এর নাম</strong>
+  আর প্রতিটার <strong>key</strong> গুলো লেখো (column এর পুরো list দরকার নেই)।
+  <br><code>{ _id, title, author: { name, email }, comments: [ { userId, text } ], tags: [ "nest", "sql" ] }</code></p>
+  <textarea placeholder="উপরে scroll না। চারটা table বের করার চেষ্টা করো, আর প্রতিটার আঙুল কোন দিকে সেটাও লেখো।"></textarea>
+  <button>Model answer দেখাও</button>
+  <div class="model" hidden>
+    <p><strong>users</strong> — PK <code>id</code>। Author আর comment এর লেখক দুইজনেই user, তাই
+    একটাই table।<br>
+    <strong>posts</strong> — PK <code>id</code>, FK <code>author_id</code> → <code>users(id)</code>।
+    Author এর name/email এখানে copy হবে না।<br>
+    <strong>comments</strong> — PK <code>id</code>, FK <code>post_id</code> → posts, FK
+    <code>user_id</code> → users। One-to-many, তাই আঙুল comment এর দিক থেকেই উঠছে।<br>
+    <strong>tags</strong> — PK <code>id</code>, আর তার সাথে join table
+    <strong>post_tags</strong> (<code>post_id</code>, <code>tag_id</code>, PK দুইটা মিলে)।
+    একটা tag অনেক post এ, একটা post এ অনেক tag — many-to-many।</p>
+    <p><code>tags</code> এর জন্য join table টা যদি মিস করো, সেটাই সবচেয়ে common ভুল: string এর
+    array দেখলে মনে হয় ওটা ছোট জিনিস, কিন্তু "একটা tag এ কত post" প্রশ্নটা তখন উত্তরহীন হয়ে যায়।</p>
+  </div>
+</div>
+
+<div class="done">Part A শেষ। আজকের জন্য এটুকুই যথেষ্ট — মূল ধারণা এখন তোমার হাতে।
+Part B আর C weekend এ, terminal নিয়ে বসে।</div>
+
+<div class="part"><strong>Part B · Postgres চালু করা</strong><span>~25 min · একবারই</span></div>
+
+<p>এই কাজটা সারা course এ একবারই করতে হবে, আর step 5, 6, 7, 11, 12, 15 — সবগুলোতে এই Postgres
+টাই লাগবে। তোমার machine এ এখন Docker নেই, তাই শুরু ওখান থেকেই।</p>
+
+<ol class="steps">
+  <li><strong>Docker Desktop বসাও</strong> —
+      <a href="https://docs.docker.com/desktop/setup/install/windows-install/">docs.docker.com এর
+      Windows install page</a> থেকে। WSL 2 backend টাই নাও (default)। একবার restart লাগতে পারে।
+      শেষে PowerShell খুলে <code>docker --version</code> চালাও; version দেখালে হয়ে গেছে।</li>
+  <li><strong>Postgres container চালাও।</strong> এক লাইন, PowerShell এ:
+<pre><code>docker run --name scale-pg -e POSTGRES_PASSWORD=devpass <span class="c">`</span>
+  -e POSTGRES_DB=scalelab -p 5432:5432 <span class="c">`</span>
+  -v scale-pg-data:/var/lib/postgresql/data -d postgres:17</code></pre>
+      <code>-v</code> অংশটা সবচেয়ে জরুরি: এটা একটা named volume, container মুছে ফেললেও তোমার data
+      থাকবে। Image এর option গুলো
+      <a href="https://hub.docker.com/_/postgres">Docker Hub এর postgres page</a> এ।</li>
+  <li><strong>ভেতরে ঢোকো</strong> — <code>docker exec -it scale-pg psql -U postgres -d scalelab</code>।
+      Prompt <code>scalelab=#</code> হলে তুমি <code>psql</code> এর ভেতরে, আর এখন যা লিখবে সব SQL।
+      <code>select version();</code> চালাও (semicolon না দিলে কিছুই হবে না — এটা সবার প্রথম দিনের ভুল)।</li>
+  <li>বেরোতে <code>\q</code>। পরে আবার একই <code>docker exec</code> command। Container বন্ধ থাকলে
+      <code>docker start scale-pg</code>।</li>
+</ol>
+
+<div class="done">Part B শেষ। <code>select version();</code> এর output টা তুমি দেখেছ মানে তোমার
+নিজের database চলছে। বিশ্রাম নাও — Part C আলাদা বসা।</div>
+
+<div class="part"><strong>Part C · হাতে-কলমে schema</strong><span>~30 min · psql</span></div>
+
+<p>Section 1–5 এর ধারণাগুলো এখন নিজের হাতে টাইপ করবে। <strong>Copy-paste করো না</strong> —
+টাইপ করার সময় যে ভুল হবে, সেই ভুলগুলোই শেখায়। Syntax এর জন্য
+<a href="https://www.postgresql.org/docs/current/ddl-constraints.html">Constraints</a> page
+পাশে খোলা রাখো, আমাকে না।</p>
+
+<ol class="steps">
+  <li><strong>users</strong> বানাও: <code>id</code> primary key,
+      <code>email text not null unique</code>, <code>name text not null</code>,
+      <code>created_at timestamptz not null default now()</code>। Id এর জন্য
+      <code>bigint generated always as identity</code> লেখো — এটাই Postgres এর auto-increment।</li>
+  <li><strong>products</strong>: <code>id</code> primary key, <code>name text not null</code>,
+      <code>price numeric(10,2) not null</code>।</li>
+  <li><strong>orders</strong>: <code>id</code> primary key,
+      <code>user_id bigint not null references users(id)</code>,
+      <code>placed_at timestamptz not null default now()</code>। এই <code>references</code> এক
+      শব্দটাই section 3 এর পুরো পাহারা।</li>
+  <li><strong>order_items</strong> — join table:
+      <code>order_id bigint not null references orders(id)</code>,
+      <code>product_id bigint not null references products(id)</code>,
+      <code>quantity integer not null check (quantity &gt; 0)</code>, আর শেষে
+      <code>primary key (order_id, product_id)</code>। দুইটা column মিলে একটা primary key —
+      মানে একই product একই order এ দুইবার row হতে পারবে না।</li>
+  <li><code>\dt</code> দিয়ে চারটা table দেখো, <code>\d orders</code> দিয়ে orders এর
+      constraint গুলো দেখো। Foreign key এর নাম Postgres নিজে দিয়েছে — নামটা খেয়াল করো,
+      error message এ ওটাই আসবে।</li>
+  <li>একজন user, একটা product, তার একটা order, আর order_items এ একটা row — <code>insert</code>
+      করে ফেলো। User এর id জানতে <code>select id, email from users;</code>।</li>
+</ol>
+
+<h3>এখন ইচ্ছা করে ভাঙো — চারবার</h3>
+
+<p>Lesson 01 এ ভাঙার কাজটাই সবচেয়ে কাজে দিয়েছিল। প্রতিবার error পড়ার <em>আগে</em> জোরে জোরে বলো
+কোন constraint টা আটকালো, তারপর message এ মিলিয়ে দেখো।</p>
+
+<ol class="steps">
+  <li>নেই এমন user এর order: <code>insert into orders (user_id) values (9999);</code></li>
+  <li>একই email দুইবার: প্রথম user এর email দিয়েই আবার একটা user insert করো।</li>
+  <li><code>quantity</code> শূন্য দিয়ে একটা <code>order_items</code> row insert করো।</li>
+  <li>যে user এর order আছে তাকে মুছে ফেলার চেষ্টা করো:
+      <code>delete from users where id = 1;</code> — আঙুল এখনো তার দিকে তোলা, তাই Postgres না বলবে।
+      <em>এটা কীভাবে ঠিক করে সেটা পরের কথা, এখন শুধু দেখো।</em></li>
+</ol>
+
+<p>চারটা error মোটামুটি এরকম দেখাবে (তোমার version এ শব্দ একটু আলাদা হতে পারে):</p>
+
+<pre><code><span class="c">1.</span> ERROR:  insert or update on table "orders" violates foreign key
+        constraint "orders_user_id_fkey"
+<span class="c">2.</span> ERROR:  duplicate key value violates unique constraint "users_email_key"
+<span class="c">3.</span> ERROR:  new row for relation "order_items" violates check constraint
+        "order_items_quantity_check"
+<span class="c">4.</span> ERROR:  update or delete on table "users" violates foreign key
+        constraint "orders_user_id_fkey" on table "orders"</code></pre>
+
+<p>চারটাতেই একই গঠন: <strong>কোন table, কোন নিয়ম ভাঙলো, নিয়মটার নাম কী।</strong> Postgres এর
+error message পড়তে শেখা মানে অর্ধেক debugging শেখা।</p>
+
+<div class="callout mission">
+  <span class="label">শেষ ধাপ — মুছে আবার বানাও</span>
+  <p>Lesson 01 এ তুমি নিজেই এটা করেছিলে, আর সেটাই তোমাকে পাস করিয়েছে। এখানেও করো:
+  <code>drop table order_items, orders, products, users;</code> — তারপর lesson না দেখে চারটা table
+  আবার লেখো। দ্বিতীয়বারে যেখানে আটকাবে, ওটাই তোমার আসল ফাঁক। <code>drop</code> এর order টাও
+  ভাবো: আঙুল তোলা table আগে মুছতে হয়, না হলে Postgres আবার না বলবে।</p>
+</div>
+
+<div class="done">Part C শেষ হলে terminal এ আমাকে বলো: চারটা error এর ভেতরে কোনটা তুমি আগে থেকে
+ঠিক বলতে পেরেছিলে, আর blank থেকে আবার লেখার সময় কোথায় আটকেছিলে। ওটা দিয়েই পরের lesson ঠিক হবে —
+joins নাকি আরেক ধাপ schema design।</div>
+
+<div class="callout">
+  <span class="label">এরপর পড়ো</span>
+  <p><strong>Primary source:</strong>
+  <a href="https://www.postgresql.org/docs/current/ddl-constraints.html">PostgreSQL Docs →
+  Data Definition → Constraints</a>। পুরোটা না, শুধু <em>Check</em>, <em>Unique</em>,
+  <em>Primary Keys</em> আর <em>Foreign Keys</em> section — ২০ মিনিট, আর এটা পড়লে Part C এর
+  চারটা error তুমি নিজেই আগে থেকে বলে দিতে পারবে। Type নিয়ে দ্বিধা হলে
+  <a href="https://www.postgresql.org/docs/current/datatype.html">Data Types</a>।
+  পুরো list <a href="../RESOURCES.md">RESOURCES.md</a> এ।</p>
+</div>
+
+<div class="callout">
+  <span class="label">আমাকে জিজ্ঞেস করো</span>
+  <p>আমি এই course এ তোমার teacher, শুধু এই page এর লেখক না। Docker install এ আটকালে, কোনো error
+  message এর মানে না বুঝলে, বা নিজের Mongo project এর কোনো collection কে relational এ ভাঙতে চাইলে —
+  <strong>সরাসরি terminal এ আমাকে জিজ্ঞেস করো।</strong> বাংলা, Banglish, English — যেভাবে সুবিধা।
+  ৩০ মিনিট নিজে চেষ্টা করার পরেও না হলে সোজা জিজ্ঞেস করো, ওটা নিয়ম ভাঙা না।</p>
+</div>
+
+<nav class="footnav">
+  <p><strong>তুমি কোথায়:</strong> roadmap এর step 2 of 16, <a href="../NOTES.md">NOTES.md</a> এ।
+  Step 1 (DI container) demonstrated।</p>
+  <ul>
+    <li>Reference · <a href="../reference/0003-relational-modelling-cheatsheet.html">Relational Modelling Cheat Sheet</a> — এটা print করে রাখো।</li>
+    <li>Mission · <a href="../MISSION.md">MISSION.md</a></li>
+    <li>আগের · <a href="0001-the-di-container.html">01 · The Container</a> · <a href="0002-incident-cpu-low-but-slow.html">Incident 01 (অসমাপ্ত)</a></li>
+  </ul>
+</nav>
+
+</main>
+</body>
+</html>

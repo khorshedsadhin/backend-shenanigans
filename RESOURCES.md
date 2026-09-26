@@ -25,6 +25,15 @@ Curated, high-trust only. Every lesson cites from here. Pruned when something pr
 - [PostgreSQL Official Documentation](https://www.postgresql.org/docs/current/)
   Use for: exact semantics of transactions, isolation levels, constraints, and index types.
   Dense; reach for it to settle a question, not to browse.
+- [PostgreSQL: Data Definition → Constraints](https://www.postgresql.org/docs/current/ddl-constraints.html)
+  Primary key, foreign key, unique, not-null and check constraints, with the exact wording of what
+  each one refuses. Use for: schema design, and decoding a constraint-violation error.
+- [PostgreSQL: Chapter 8 — Data Types](https://www.postgresql.org/docs/current/datatype.html)
+  Use for: choosing a column type. Settles `numeric` vs `float` for money and `timestamptz` vs
+  `timestamp`, both of which are decided once and regretted for years.
+- [Docker Hub: official `postgres` image](https://hub.docker.com/_/postgres)
+  The canonical `docker run` invocation, the `POSTGRES_PASSWORD` requirement, and where the data
+  directory lives. Use for: standing up local Postgres, and later the Compose lesson (step 11).
 - [use-the-index-luke.com — PostgreSQL execution plan operations](https://use-the-index-luke.com/sql/explain-plan/postgresql/operations)
   A decoder ring for `Seq Scan`, `Index Scan`, `Bitmap Heap Scan`, `Nested Loop`, `Hash Join`.
   Use for: reading your first real `EXPLAIN ANALYZE` output.

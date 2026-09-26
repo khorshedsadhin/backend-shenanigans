@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference · Relational Modelling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+Bengali:wght@400;600&display=swap">
+<link rel="stylesheet" href="../assets/course.css">
+</head>
+<body class="ref">
+<main class="sheet">
+
+<header class="masthead">
+  <p class="eyebrow">Reference 03 · <a href="../lessons/0003-relational-thinking.html">Lesson 03</a> এর সাথী</p>
+  <h1>Relational Modelling</h1>
+  <p class="standfirst">Mongo থেকে Postgres এ অনুবাদ, type, constraint, আর error — এক page এ।</p>
+</header>
+
+<h2>Mongo → Postgres অনুবাদ</h2>
+
+<table>
+  <thead><tr><th>Mongo তে</th><th>Postgres এ</th><th>কেন</th></tr></thead>
+  <tbody>
+    <tr><td><code>_id</code></td>
+        <td><code>id bigint generated always as identity primary key</code></td>
+        <td>Auto-increment এর Postgres রূপ। UUID ও চলে, তখন <code>uuid</code> + <code>default gen_random_uuid()</code>।</td></tr>
+    <tr><td>Embedded object — <code>user: { name, email }</code></td>
+        <td>আলাদা <code>users</code> table + <code>user_id</code> foreign key</td>
+        <td>Fact টা এক জায়গায় থাকে, তাই email বদলালে এক row বদলায়।</td></tr>
+    <tr><td>Array of subdocuments — <code>items: [ {...} ]</code></td>
+        <td>Child table, যার একটা FK parent এর দিকে</td>
+        <td>"Many" দিক থেকে আঙুল ওঠে। এক parent এ কতগুলো child, সেটা আগে জানার দরকার পড়ে না।</td></tr>
+    <tr><td>Array of ids বা strings — <code>tags: [ ... ]</code></td>
+        <td>Join table — <code>post_tags(post_id, tag_id)</code></td>
+        <td>Many-to-many। Array column এ foreign key খাটে না, তাই ওটা ছদ্মবেশে Mongo অভ্যাস।</td></tr>
+    <tr><td>Field এ আজ string, কাল number</td>
+        <td>Column এর একটা declared type, database নিজে জোর করে</td>
+        <td>ভুল data insert এর সময়ই আটকায়, ছয় মাস পর production এ না।</td></tr>
+    <tr><td><code>ref</code> কিন্তু পাহারা নেই</td>
+        <td><code>references users(id)</code></td>
+        <td>Orphan row ঢুকতেই পারে না — application এ if লেখার দরকার নেই।</td></tr>
+  </tbody>
+</table>
+
+<h2>Column type, এখনকার জন্য</h2>
+
+<table>
+  <thead><tr><th>Type</th><th>কীসের জন্য</th><th>ফাঁদ</th></tr></thead>
+  <tbody>
+    <tr><td><code>text</code></td><td>নাম, email, যেকোনো string</td>
+        <td><code>varchar(n)</code> দ্রুত না। Limit দাও শুধু সত্যিকারের business নিয়ম থাকলে।</td></tr>
+    <tr><td><code>bigint</code></td><td>id, count</td>
+        <td><code>integer</code> ২১৪ কোটিতে শেষ। Id এ কখনো risk নিও না।</td></tr>
+    <tr><td><code>numeric(10,2)</code></td><td>টাকা, দাম</td>
+        <td>টাকার জন্য <code>float</code>/<code>double</code> কখনো না — rounding এ টাকা হারায়।</td></tr>
+    <tr><td><code>timestamptz</code></td><td>কখন ঘটলো</td>
+        <td><code>timestamp</code> timezone ফেলে দেয়। সবসময় <code>tz</code> ওয়ালাটা।</td></tr>
+    <tr><td><code>boolean</code></td><td>হ্যাঁ/না</td>
+        <td><code>null</code> ও একটা সম্ভাবনা — দরকার না হলে <code>not null default false</code>।</td></tr>
+    <tr><td><code>uuid</code></td><td>বাইরে দেখানো id</td>
+        <td>Sequence থেকে row গোনা আটকায়, কিন্তু index এ বড় আর random।</td></tr>
+  </tbody>
+</table>
+
+<h2>Constraint syntax</h2>
+
+<div class="grid2">
+  <div>
+<pre><code><span class="c">-- এক column এর primary key</span>
+id bigint generated always as identity
+   primary key
+
+<span class="c">-- একটাই থাকবে, খালিও না</span>
+email text not null unique
+
+<span class="c">-- অন্য table এর দিকে আঙুল</span>
+user_id bigint not null
+  references users(id)</code></pre>
+  </div>
+  <div>
+<pre><code><span class="c">-- value র উপরে নিয়ম</span>
+quantity integer not null
+  check (quantity &gt; 0)
+
+<span class="c">-- দুই column মিলে primary key</span>
+primary key (order_id, product_id)
+
+<span class="c">-- পরে যোগ করা</span>
+alter table orders add constraint
+  orders_user_fk foreign key (user_id)
+  references users(id);</code></pre>
+  </div>
+</div>
+
+<p><a href="https://www.postgresql.org/docs/current/ddl-constraints.html">Docs → Constraints</a>।
+মনে রাখো: <code>unique</code>, <code>not null</code> আর <code>references</code> তিনটা আলাদা
+পাহারাদার, একজনের কাজ আরেকজন করে না।</p>
+
+<h2>সম্পর্ক → কী বানাবে</h2>
+
+<table>
+  <thead><tr><th>সম্পর্ক</th><th>উদাহরণ</th><th>যা বানাতে হবে</th></tr></thead>
+  <tbody>
+    <tr><td>One-to-one</td><td>user ↔ profile</td>
+        <td>Child table এ FK, আর সেই FK তে <code>unique</code>। বা একই table এ রেখে দাও।</td></tr>
+    <tr><td>One-to-many</td><td>user → orders</td>
+        <td>"Many" দিকে FK: <code>orders.user_id</code>। Parent এ কিছু যোগ হয় না।</td></tr>
+    <tr><td>Many-to-many</td><td>orders ↔ products</td>
+        <td>Join table, দুইটা FK, আর দুইটা মিলে composite primary key।</td></tr>
+    <tr><td>সম্পর্কের নিজের fact</td><td>এই order এ এই product কতটা</td>
+        <td>Join table এর column (<code>quantity</code>) — কোনো পাশে না।</td></tr>
+  </tbody>
+</table>
+
+<h2>Error decoder</h2>
+
+<table class="err">
+  <thead><tr><th>Message</th><th>মানে</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>insert or update on table "orders" violates foreign key constraint "orders_user_id_fkey"</code></td>
+      <td>যে <code>user_id</code> দিয়েছ সেটা <code>users</code> এ নেই। Orphan row বানানোর চেষ্টা।</td>
+      <td>আগে user টা insert করো, তার আসল <code>id</code> নিয়ে তারপর order।</td>
+    </tr>
+    <tr>
+      <td><code>update or delete on table "users" violates foreign key constraint ... on table "orders"</code></td>
+      <td>উল্টো দিক: এই user কে কেউ এখনো দেখাচ্ছে, তাই মুছতে দিচ্ছে না।</td>
+      <td>আগে order গুলো সরাও, অথবা FK তে <code>on delete</code> নিয়ম ঠিক করো (পরের lesson)।</td>
+    </tr>
+    <tr>
+      <td><code>duplicate key value violates unique constraint "users_email_key"</code></td>
+      <td>এই email আরেকটা row এ আছে। <code>unique</code> আটকেছে।</td>
+      <td>আসল duplicate হলে data ঠিক করো। নিয়মটাই ভুল হলে constraint বদলাও, লুকাও না।</td>
+    </tr>
+    <tr>
+      <td><code>new row for relation "order_items" violates check constraint "order_items_quantity_check"</code></td>
+      <td>Value টা <code>check (...)</code> এর শর্ত মানেনি — যেমন <code>quantity = 0</code>।</td>
+      <td>Value ঠিক করো। Check টা <em>কাজ করেছে</em>, এটাই তো চাওয়া ছিল।</td>
+    </tr>
+    <tr>
+      <td><code>null value in column "email" of relation "users" violates not-null constraint</code></td>
+      <td>Column বাদ দিয়েছ আর তার কোনো <code>default</code> নেই।</td>
+      <td>Value দাও, অথবা column এ যুক্তি থাকলে <code>default</code> দাও।</td>
+    </tr>
+    <tr>
+      <td>কিছুই হচ্ছে না, <code>psql</code> শুধু <code>scalelab-#</code> দেখাচ্ছে</td>
+      <td>Statement শেষ হয়নি — semicolon দাওনি, বা quote/bracket খোলা।</td>
+      <td><code>;</code> দাও। আটকে গেলে <code>\r</code> দিয়ে লাইনটা বাতিল করো।</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Docker আর psql, মুখস্থ রাখার মতো</h2>
+
+<pre><code>docker start scale-pg                              <span class="c"># container চালু</span>
+docker exec -it scale-pg psql -U postgres -d scalelab  <span class="c"># ভেতরে ঢোকা</span>
+docker logs --tail 20 scale-pg                     <span class="c"># চালু না হলে এখানে কারণ</span>
+
+\dt              <span class="c"># সব table</span>
+\d orders        <span class="c"># এক table এর column + constraint</span>
+\l               <span class="c"># সব database</span>
+\x               <span class="c"># লম্বা row উল্লম্বভাবে দেখাও</span>
+\r               <span class="c"># আধা-লেখা statement বাতিল</span>
+\q               <span class="c"># বেরিয়ে যাও</span></code></pre>
+
+<div class="callout mission">
+  <span class="label">এটা সাথে রাখো</span>
+  <p><strong>একটা fact এক জায়গায় ⇒ copy নেই ⇒ update anomaly নেই ⇒ দাম হলো join ⇒ join ধীর হলে
+  index।</strong> এই শিকলটাই roadmap এর step 2 → 4 → 7। Schema ভুল হলে শিকলের প্রথম কড়াই ভাঙা,
+  আর index দিয়ে সেটা জোড়া লাগে না। দেখো <a href="../MISSION.md">MISSION.md</a>।</p>
+</div>
+
+<nav class="footnav">
+  <ul>
+    <li>Lesson · <a href="../lessons/0003-relational-thinking.html">03 · একটা Fact, এক জায়গায়</a></li>
+    <li>Source · <a href="https://www.postgresql.org/docs/current/ddl-constraints.html">postgresql.org — Constraints</a></li>
+    <li>Resources · <a href="../RESOURCES.md">RESOURCES.md</a></li>
+  </ul>
+</nav>
+
+</main>
+</body>
+</html>
