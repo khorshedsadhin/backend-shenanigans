@@ -1,5 +1,7 @@
 # Course reset: smaller sittings, Bangla, and an Incident track (2026-09-24)
 
+Status: superseded by LR-0003 (only its closing claim that lesson 01 was undemonstrated).
+
 Lesson 01 went untouched for ~20 days after session 0. The stated cause was time (varsity
 project, part-time job, gaming), not difficulty. The realistic budget is 3-5 hrs/week, down from
 8-12 ([[MISSION.md]] updated). Lessons are now written in Bangla script with English technical
