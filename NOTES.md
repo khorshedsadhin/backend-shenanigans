@@ -8,7 +8,9 @@
   not to be treated as though he knows these things together.
 - Time: ~3–5 hrs/week (revised 2026-09-24, was 8–12). Short weekday sittings, one bigger
   weekend hands-on. Competes with a varsity project, a part-time job, and gaming.
-- Platform: Windows 11. Docker Desktop assumed for Postgres/Redis.
+- Platform: Windows 11. **Docker Desktop is not installed yet** (checked 2026-09-26: no `docker`,
+  no `psql`, no WSL distro). Installing it is Part B of lesson 0003 and must be budgeted as a
+  sitting of its own, not assumed.
 
 ## Teaching preferences observed
 - Asked for the *whole map* (load balancing, queues, caching) up front — he wants to see where
@@ -19,6 +21,11 @@
 - **Sitting size (2026-09-24).** Lesson 01 sat untouched for ~20 days. The stated cause was time,
   not difficulty. Split every lesson into parts of ~15–25 min, each ending in a visible "done"
   box, so one sitting is always a finishable unit. Part A = reading + quiz, no setup.
+- **Delete-and-rebuild works (2026-09-26).** He cleared lesson 01's tasks and rebuilt them from
+  an empty file, twice, without being told to. Keep this as the completion bar and make every
+  Part B end in something deletable.
+- **He skips the end-of-lesson reading.** Lesson 01's docs links went unread. Assigned reading
+  does not land; fold the primary source into a retrieval check instead of a homework list.
 - **Wants real-world diagnosis** ("CPU 12%, server fine, API slow"). Served by the Incident track
   below. Incidents are more motivating than abstract topics; lean on them.
 
@@ -48,7 +55,9 @@ output instead of replacing his skill. Help is never withheld — only its *shap
 
 ## Roadmap (living — reorder as learning records dictate)
 1. **Nest mental model** — modules, providers, the DI container. ← *lesson 0001*
+   **Demonstrated 2026-09-26** — blank-file rebuild, `learning-records/0003`.
 2. **Relational thinking** — tables, keys, normalisation. The Mongo→Postgres unlearning.
+   ← *lesson 0003*. **Current.**
 3. Controllers, DTOs, validation pipes. The HTTP edge done properly.
 4. SQL you'll actually write: joins, aggregates, `GROUP BY`.
 5. Connecting Nest to Postgres; migrations; the repository boundary.
@@ -70,3 +79,7 @@ then one every 2–3 steps.
 - Incident 01 — CPU 12% but API slow: work vs. waiting, blocked event loop, pool saturation.
   ← *lesson 0002*. Next candidates: slow endpoint fixed by an index (after step 7), cart data
   leaking between users (singleton state, after step 3), a queue that silently drops jobs (after 13).
+
+## In flight
+- Lesson 0002 (Incident 01) is started but unfinished. Nothing depends on it; it is not blocking
+  step 2. Ask about it before writing the next incident.
