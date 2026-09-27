@@ -20,6 +20,12 @@ dependency order, and injects them. You declare what a class needs; you never ca
 **singleton scope** — the default provider scope: one instance for the whole application, its
 lifetime tied to the application's. All concurrent requests share it.
 
+**event loop** — the single thread that runs your JavaScript. It takes one piece of work at a time;
+nothing else in the process runs until that piece returns or hands control back.
+
+**blocked event loop** — synchronous work holding that thread, so every other request waits in line
+behind it however cheap it is. Measured in Incident 01: a 0.0012s endpoint took 11.6s.
+
 ## Candidates awaiting evidence
 
 Introduced in lesson 0001, promote once used correctly:
@@ -27,3 +33,6 @@ stateless service.
 
 Introduced in lesson 0003, promote once used correctly:
 row, column, primary key, foreign key, join table, normalisation.
+
+Introduced in lesson 0002, promote once used correctly:
+connection pool saturation, timeout.

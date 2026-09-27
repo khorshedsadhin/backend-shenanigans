@@ -26,6 +26,9 @@
   Part B end in something deletable.
 - **He skips the end-of-lesson reading.** Lesson 01's docs links went unread. Assigned reading
   does not land; fold the primary source into a retrieval check instead of a homework list.
+- **He measures and reproduces (2026-09-27).** Incident 01's report-back came as numbers, unprompted,
+  with the 5-request ladder run twice before he drew a conclusion. Ask for measurements, not
+  descriptions.
 - **Wants real-world diagnosis** ("CPU 12%, server fine, API slow"). Served by the Incident track
   below. Incidents are more motivating than abstract topics; lean on them.
 
@@ -62,12 +65,14 @@ output instead of replacing his skill. Help is never withheld — only its *shap
 4. SQL you'll actually write: joins, aggregates, `GROUP BY`.
 5. Connecting Nest to Postgres; migrations; the repository boundary.
 6. Transactions and isolation. Why money apps use them.
-7. Indexes and `EXPLAIN ANALYZE`. Making a slow query fast, measured.
+7. Indexes and `EXPLAIN ANALYZE`. Making a slow query fast, measured. He already drives
+   `curl.exe -w "%{time_total}s"` himself (`learning-records/0004`) — reuse it for before/after
+   rather than teaching a load tool. Owed here: the per-core CPU reading Incident 01 never measured.
 8. Auth: hashing, JWT, guards.
 9. Config, env, logging, error filters. Production hygiene.
 10. Testing: unit vs integration, Testcontainers.
 11. Docker Compose: app + Postgres + Redis.
-12. Caching with Redis. Invalidation. Measured.
+12. Caching with Redis. Invalidation. Measured with the same curl before/after loop.
 13. Queues with BullMQ. Moving work off the request path.
 14. Load testing. Statelessness. N instances behind a load balancer.
 15. Replication, read replicas, connection pooling (PgBouncer).
@@ -77,9 +82,6 @@ output instead of replacing his skill. Help is never withheld — only its *shap
 Real production symptoms, diagnosed with what the roadmap has taught so far. One after step 1,
 then one every 2–3 steps.
 - Incident 01 — CPU 12% but API slow: work vs. waiting, blocked event loop, pool saturation.
-  ← *lesson 0002*. Next candidates: slow endpoint fixed by an index (after step 7), cart data
+  ← *lesson 0002*. **Demonstrated 2026-09-27** — both traps measured, `learning-records/0004`.
+  Next candidates: slow endpoint fixed by an index (after step 7), cart data
   leaking between users (singleton state, after step 3), a queue that silently drops jobs (after 13).
-
-## In flight
-- Lesson 0002 (Incident 01) is started but unfinished. Nothing depends on it; it is not blocking
-  step 2. Ask about it before writing the next incident.
